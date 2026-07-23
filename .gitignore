@@ -29,8 +29,8 @@ ai/models/*.pt
 reports/generated/*.pdf
 
 # ── Evidence Captures ─────────────────────────────────────────────────────────
-captures/evidence/*.jpg
-captures/evidence/*.png
+captures/
+ai/datasets/
 
 # ── Logs ───────────────────────────────────────────────────────────────────────
 logs/*.log
