@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}Exams — ExamSentinelX AI{% endblock %}
+
+{% block extra_css %}
+<style>
+.admin-wrap { display:grid; grid-template-columns:var(--sidebar-w) 1fr; min-height:calc(100vh - var(--nav-h)); }
+.admin-sidebar {
+  background:var(--bg-surface); border-right:1px solid var(--border);
+  padding:16px 0; position:sticky; top:var(--nav-h);
+  height:calc(100vh - var(--nav-h)); overflow-y:auto;
+}
+.admin-main { padding:32px 36px; background:var(--bg-base); }
+.status-dot { width:6px;height:6px;border-radius:50%;display:inline-block; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-wrap">
+  <aside class="admin-sidebar">
+    <div style="padding:12px 16px 16px;border-bottom:1px solid var(--border);margin-bottom:8px;">
+      <div style="font-size:0.7rem;color:var(--text-4);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px;">Administrator</div>
+      <div style="font-size:0.9rem;font-weight:600;color:var(--text-1);">{{ current_user.full_name }}</div>
+    </div>
+    <div style="padding:0 8px;">
+      <div class="sidebar-section-label" style="padding:0 8px;">Overview</div>
+      <a href="{{ url_for('admin.dashboard') }}" class="sidebar-link" id="sb-dashboard"><span class="icon">📊</span> Dashboard</a>
+      <a href="{{ url_for('admin.exams') }}" class="sidebar-link active" id="sb-exams"><span class="icon">📝</span> Exams</a>
+      <div class="sidebar-section-label" style="padding:0 8px;margin-top:16px;">Users</div>
+      <a href="{{ url_for('admin.students') }}" class="sidebar-link" id="sb-students"><span class="icon">👤</span> Students</a>
+      <a href="{{ url_for('admin.users') }}" class="sidebar-link" id="sb-users"><span class="icon">🔑</span> All Users</a>
+      <div class="sidebar-section-label" style="padding:0 8px;margin-top:16px;">Actions</div>
+      <a href="{{ url_for('admin.create_exam') }}" class="sidebar-link" id="sb-create"><span class="icon">＋</span> Create Exam</a>
+    </div>
+  </aside>
+
+  <main class="admin-main">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Exams</h1>
+        <p class="page-subtitle">Manage and deploy examination protocols</p>
+      </div>
+      <a href="{{ url_for('admin.create_exam') }}" class="btn btn-primary" id="btn-new-exam">
+        + New Exam
+      </a>
+    </div>
+
+    <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;">
+      {% if exam_data %}
+      <div class="table-wrap" style="border:none;border-radius:0;">
+        <table>
+          <thead>
+            <tr>
+              <th style="padding-left:20px;">Exam</th>
+              <th>Subject</th>
+              <th>Duration</th>
+              <th>Sessions</th>
+              <th>Flags</th>
+              <th>Avg Score</th>
+              <th>Status</th>
+              <th style="text-align:right;padding-right:20px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for e in exam_data %}
+            <tr>
+              <td style="padding-left:20px;">
+                <div style="font-weight:600;color:var(--text-1);">{{ e.exam.title }}</div>
+                <div style="font-size:0.75rem;color:var(--text-3);margin-top:2px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ e.exam.description or '—' }}</div>
+              </td>
+              <td style="font-family:var(--font-mono);font-size:0.8rem;">{{ e.exam.subject or '—' }}</td>
+              <td style="font-family:var(--font-mono);font-size:0.8rem;">{{ e.exam.duration_minutes }}m</td>
+              <td style="font-family:var(--font-mono);font-size:0.85rem;font-weight:600;color:var(--text-1);">{{ e.total_sessions }}</td>
+              <td>
+                {% if e.flagged_sessions > 0 %}
+                <span class="badge badge-danger">{{ e.flagged_sessions }}</span>
+                {% else %}
+                <span class="badge badge-success">0</span>
+                {% endif %}
+              </td>
+              <td style="font-family:var(--font-mono);font-size:0.85rem;font-weight:600;">{{ e.avg_score }}/{{ e.exam.total_marks or '?' }}</td>
+              <td>
+                {% if e.exam.is_active %}
+                <span class="badge badge-success"><span class="status-dot" style="background:var(--success);"></span> Active</span>
+                {% else %}
+                <span class="badge badge-muted"><span class="status-dot" style="background:var(--text-4);"></span> Inactive</span>
+                {% endif %}
+              </td>
+              <td style="text-align:right;padding-right:20px;">
+                <div style="display:flex;gap:6px;justify-content:flex-end;">
+                  <a href="{{ url_for('admin.manage_questions', exam_id=e.exam.id) }}" class="btn btn-ghost btn-sm" id="edit-{{ e.exam.id }}">Edit</a>
+                  <form method="POST" action="{{ url_for('admin.toggle_exam', exam_id=e.exam.id) }}" style="display:inline;margin:0;">
+                    <button type="submit" class="btn btn-outline btn-sm" id="toggle-{{ e.exam.id }}">{{ 'Deactivate' if e.exam.is_active else 'Activate' }}</button>
+                  </form>
+                  <form method="POST" action="{{ url_for('admin.delete_exam', exam_id=e.exam.id) }}" style="display:inline;margin:0;" onsubmit="return confirm('Delete \'{{ e.exam.title }}\'?');">
+                    <button type="submit" class="btn btn-danger btn-sm" id="del-{{ e.exam.id }}">Delete</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty-state" style="padding:80px 20px;">
+        <div class="icon">📝</div>
+        <h3>No exams yet</h3>
+        <p>Create your first exam to get started</p>
+        <a href="{{ url_for('admin.create_exam') }}" class="btn btn-primary" style="margin-top:16px;">Create Exam</a>
+      </div>
+      {% endif %}
+    </div>
+  </main>
+</div>
+{% endblock %}

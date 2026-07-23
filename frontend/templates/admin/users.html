@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% block title %}Manage Users — ExamSentinelX AI{% endblock %}
+
+{% block extra_css %}
+<style>
+.admin-layout { 
+  display: grid; 
+  grid-template-columns: 280px 1fr; 
+  min-height: calc(100vh - 72px);
+  background: radial-gradient(circle at 100% 0%, rgba(0, 245, 255, 0.03) 0%, transparent 50%);
+}
+
+.admin-sidebar { 
+  background: rgba(10, 14, 20, 0.5); 
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-right: 1px solid var(--border-glass); 
+  padding: 32px 0; 
+}
+
+.admin-sidebar a { 
+  display: flex; align-items: center; gap: 12px; 
+  padding: 14px 24px; 
+  color: var(--text-secondary); 
+  font-size: 0.95rem; 
+  font-weight: 500;
+  transition: all var(--transition-fast); 
+  border-left: 3px solid transparent; 
+  text-decoration: none; 
+}
+
+.admin-sidebar a:hover, .admin-sidebar a.active { 
+  color: var(--text-primary); 
+  background: rgba(0, 245, 255, 0.05); 
+  border-left-color: var(--accent-primary); 
+  box-shadow: inset 4px 0 12px rgba(0, 245, 255, 0.05);
+}
+
+.admin-content { 
+  padding: 40px 48px; 
+  overflow-y: auto; 
+}
+
+.avatar-hex {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  border-radius: var(--radius-sm);
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border-glass);
+}
+.avatar-hex.admin {
+  background: rgba(0, 245, 255, 0.1);
+  color: var(--accent-primary);
+  border-color: rgba(0, 245, 255, 0.3);
+  box-shadow: inset 0 0 10px rgba(0,245,255,0.1);
+}
+.avatar-hex.student {
+  background: rgba(167, 139, 250, 0.1);
+  color: #a78bfa;
+  border-color: rgba(167, 139, 250, 0.3);
+  box-shadow: inset 0 0 10px rgba(167,139,250,0.1);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-layout">
+  <!-- Sidebar -->
+  <div class="admin-sidebar">
+    <div style="padding:0 24px 24px; border-bottom:1px solid var(--border-glass); margin-bottom:16px;">
+      <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:8px; font-weight:600;">System Admin</div>
+      <div style="font-family:var(--font-display); font-weight:700; font-size:1.1rem; color:var(--text-primary);">{{ current_user.full_name }}</div>
+    </div>
+    <a href="{{ url_for('admin.dashboard') }}" id="sidebar-dashboard">
+      <span style="font-size:1.2rem; opacity:0.8;">📊</span> Control Center
+    </a>
+    <a href="{{ url_for('admin.exams') }}" id="sidebar-exams">
+      <span style="font-size:1.2rem; opacity:0.8;">📝</span> Assessment Config
+    </a>
+    <a href="{{ url_for('admin.users') }}" class="active" id="sidebar-users">
+      <span style="font-size:1.2rem; opacity:0.8;">👥</span> Personnel Access
+    </a>
+    <a href="{{ url_for('admin.students') }}" id="sidebar-students">
+      <span style="font-size:1.2rem; opacity:0.8;">🎓</span> Candidate Profiles
+    </a>
+    <a href="{{ url_for('admin.create_exam') }}" id="sidebar-create-exam">
+      <span style="font-size:1.2rem; opacity:0.8;">➕</span> Deploy Assessment
+    </a>
+  </div>
+
+  <!-- Main Content -->
+  <div class="admin-content">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:40px;">
+      <div>
+        <h1 style="font-size:2.2rem; font-weight:700; letter-spacing:-0.03em;">Network Personnel</h1>
+        <p class="text-secondary" style="font-size:1.05rem; margin-top:4px;">Manage identity clearance and system access levels.</p>
+      </div>
+      <span class="badge badge-info" style="font-family:var(--font-mono);">{{ users|length }} IDENTITIES REGISTERED</span>
+    </div>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+      <div class="alert alert-{{ cat }}" style="margin-bottom:24px;">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <div class="card-glass" style="padding:0; overflow:hidden;">
+      {% if users %}
+      <div class="table-container" style="border:none; border-radius:0;">
+        <table>
+          <thead>
+            <tr>
+              <th style="padding-left: 32px;">Identity Designation</th>
+              <th>Contact Node</th>
+              <th>Clearance Level</th>
+              <th>Initialization Date</th>
+              <th>Network Status</th>
+              <th style="padding-right: 32px; text-align:right;">Access Controls</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for user in users %}
+            <tr>
+              <td style="padding-left: 32px;">
+                <div style="display:flex; align-items:center; gap:16px;">
+                  <div class="avatar-hex {{ 'admin' if user.role == 'admin' else 'student' }}">
+                    {{ user.full_name[0].upper() }}
+                  </div>
+                  <div>
+                    <div style="font-weight:600; font-size:1.05rem; color:var(--text-primary);">{{ user.full_name }}</div>
+                    <div style="font-size:0.85rem; font-family:var(--font-mono); color:var(--text-muted); margin-top:4px;">ID: {{ user.username }}</div>
+                  </div>
+                </div>
+              </td>
+              <td style="font-size:0.9rem;">{{ user.email }}</td>
+              <td>
+                <span class="badge {{ 'badge-info' if user.role == 'admin' else 'badge-warning' }}"
+                      style="{{ 'background:rgba(0,245,255,0.1); color:var(--accent-primary); border-color:rgba(0,245,255,0.2);' if user.role == 'admin' else 'background:rgba(167,139,250,0.1); color:#a78bfa; border-color:rgba(167,139,250,0.2);' }}">
+                  {{ 'SYS-ADMIN' if user.role == 'admin' else 'CANDIDATE' }}
+                </span>
+              </td>
+              <td style="font-size:0.9rem; font-family:var(--font-mono);">{{ user.created_at.strftime('%Y-%m-%d') if user.created_at else '—' }}</td>
+              <td>
+                {% if user.is_active %}
+                <span style="display:inline-flex; align-items:center; gap:6px; font-size:0.85rem; color:var(--accent-emerald); font-weight:600; font-family:var(--font-mono);">
+                  <span style="width:8px; height:8px; border-radius:50%; background:var(--accent-emerald); display:inline-block; box-shadow:0 0 10px currentColor;"></span>ACTIVE
+                </span>
+                {% else %}
+                <span style="display:inline-flex; align-items:center; gap:6px; font-size:0.85rem; color:var(--text-muted); font-weight:600; font-family:var(--font-mono);">
+                  <span style="width:8px; height:8px; border-radius:50%; background:var(--text-muted); display:inline-block;"></span>SUSPENDED
+                </span>
+                {% endif %}
+              </td>
+              <td style="padding-right: 32px; text-align:right;">
+                {% if user.id != current_user.id %}
+                <form method="POST" action="{{ url_for('admin.toggle_user', user_id=user.id) }}" style="display:inline; margin:0;">
+                  <button type="submit"
+                          class="btn btn-sm {{ 'btn-outline' if user.is_active else 'btn-primary' }}"
+                          id="toggle-user-{{ user.id }}"
+                          {% if user.role == 'admin' %}
+                          onclick="return confirm('WARNING: Suspending an administrative identity. Proceed?');"
+                          {% endif %}>
+                    {{ 'Suspend' if user.is_active else 'Reactivate' }}
+                  </button>
+                </form>
+                {% else %}
+                <span style="font-size:0.85rem; font-family:var(--font-mono); color:var(--accent-primary); background:rgba(0,245,255,0.05); padding:6px 12px; border-radius:var(--radius-sm); border:1px solid rgba(0,245,255,0.2);">ACTIVE NODE (YOU)</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div style="text-align:center; padding:80px; color:var(--text-muted);">
+        <div style="font-size:3rem; margin-bottom:16px; opacity:0.5;">👤</div>
+        <p style="font-size:1.1rem; font-weight:500;">No personnel found in network.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

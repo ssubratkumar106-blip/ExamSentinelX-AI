@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}Create Account — ExamSentinelX AI{% endblock %}
+
+{% block extra_css %}
+<style>
+.auth-page {
+  min-height:calc(100vh - 60px);
+  display:flex; align-items:center; justify-content:center;
+  padding:40px 20px; position:relative;
+}
+.auth-glow {
+  position:absolute; top:0; left:50%; transform:translateX(-50%);
+  width:500px; height:300px;
+  background:radial-gradient(ellipse, rgba(59, 130, 246,0.1) 0%, transparent 70%);
+  pointer-events:none;
+}
+.auth-card {
+  width:100%; max-width:460px;
+  background:var(--bg-surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius-xl);
+  padding:36px 36px;
+  box-shadow:var(--shadow-lg);
+  position:relative; z-index:1;
+}
+.strength-bar { height:3px; background:var(--border); border-radius:99px; margin-top:8px; overflow:hidden; }
+.strength-fill { height:100%; border-radius:99px; transition:width 0.3s ease, background 0.3s ease; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+  <div class="auth-glow"></div>
+  <div class="auth-card">
+
+    <div style="text-align:center;margin-bottom:28px;">
+      <div style="width:44px;height:44px;background:linear-gradient(135deg,#3B82F6,#10B981);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;box-shadow:0 0 20px rgba(59, 130, 246,0.35);margin:0 auto 14px;">🛡</div>
+      <h1 style="font-size:1.25rem;font-weight:700;margin-bottom:4px;">Create your account</h1>
+      <p style="font-size:0.85rem;color:var(--text-3);">Join ExamSentinelX AI proctoring platform</p>
+    </div>
+
+    <form method="POST" action="{{ url_for('auth.register') }}" id="register-form">
+
+      <div class="form-group">
+        <label for="full_name" class="form-label">Full Name</label>
+        <input type="text" id="full_name" name="full_name" class="form-control"
+               placeholder="e.g. Jane Doe" value="{{ full_name or '' }}" required minlength="2">
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px;">
+        <div class="form-group" style="margin:0;">
+          <label for="reg-username" class="form-label">Username</label>
+          <input type="text" id="reg-username" name="username" class="form-control"
+                 placeholder="jane_doe" value="{{ username or '' }}" required minlength="3">
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label for="reg-email" class="form-label">Email</label>
+          <input type="email" id="reg-email" name="email" class="form-control"
+                 placeholder="jane@example.com" value="{{ email or '' }}" required>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-top:14px;">
+        <label for="reg-password" class="form-label">Password</label>
+        <input type="password" id="reg-password" name="password" class="form-control"
+               placeholder="Minimum 8 characters" required minlength="8"
+               oninput="checkStrength(this.value)">
+        <div class="strength-bar">
+          <div class="strength-fill" id="strength-fill" style="width:0%;background:var(--danger);"></div>
+        </div>
+        <div id="strength-text" style="font-size:0.72rem;color:var(--text-3);margin-top:5px;font-weight:500;"></div>
+      </div>
+
+      <div class="form-group" style="margin-top:14px;">
+        <label for="confirm_password" class="form-label">Confirm Password</label>
+        <input type="password" id="confirm_password" name="confirm_password"
+               class="form-control" placeholder="Re-enter your password" required>
+      </div>
+
+      <button type="submit" class="btn btn-primary w-100 btn-lg" style="margin-top:20px;" id="register-submit">
+        Create Account
+      </button>
+    </form>
+
+    <div style="text-align:center;margin-top:20px;font-size:0.875rem;color:var(--text-3);">
+      Already have an account?
+      <a href="{{ url_for('auth.login') }}" id="login-link" style="font-weight:600;color:var(--accent-hover);margin-left:4px;">Sign in</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function checkStrength(pw) {
+  let score = 0;
+  if (pw.length >= 8) score++;
+  if (/[A-Z]/.test(pw)) score++;
+  if (/[0-9]/.test(pw)) score++;
+  if (/[^A-Za-z0-9]/.test(pw)) score++;
+  const levels = [
+    { w:'0%',   c:'var(--danger)',   t:'' },
+    { w:'25%',  c:'var(--danger)',   t:'Weak' },
+    { w:'50%',  c:'var(--warning)',  t:'Fair' },
+    { w:'75%',  c:'var(--accent)',   t:'Good' },
+    { w:'100%', c:'var(--success)',  t:'Strong ✓' },
+  ];
+  const lvl = levels[score];
+  const fill = document.getElementById('strength-fill');
+  const txt  = document.getElementById('strength-text');
+  fill.style.width = lvl.w; fill.style.background = lvl.c;
+  txt.textContent = lvl.t; txt.style.color = lvl.c;
+}
+document.getElementById('register-form').addEventListener('submit', function(e) {
+  const pw = document.getElementById('reg-password').value;
+  const cpw = document.getElementById('confirm_password').value;
+  if (pw !== cpw) { e.preventDefault(); alert('Passwords do not match.'); return; }
+  const btn = document.getElementById('register-submit');
+  btn.textContent = 'Creating account...'; btn.disabled = true;
+});
+</script>
+{% endblock %}

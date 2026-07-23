@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Exam History — ExamSentinelX AI{% endblock %}
+{% block content %}
+<div style="max-width:1100px;margin:0 auto;padding:32px 28px;">
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Exam History</h1>
+      <p class="page-subtitle">All your past examination sessions</p>
+    </div>
+    <a href="{{ url_for('exam.student_dashboard') }}" class="btn btn-ghost btn-sm">← Dashboard</a>
+  </div>
+
+  <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;">
+    {% if sessions %}
+    <div class="table-wrap" style="border:none;border-radius:0;">
+      <table>
+        <thead>
+          <tr>
+            <th style="padding-left:20px;">Exam</th>
+            <th>Date</th>
+            <th>Status</th>
+            <th>Score</th>
+            <th>Violations</th>
+            <th style="padding-right:20px;">Risk Score</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for session in sessions %}
+          <tr>
+            <td style="padding-left:20px;font-weight:600;color:var(--text-1);">{{ session.exam.title }}</td>
+            <td style="font-family:var(--font-mono);font-size:0.8rem;color:var(--text-3);">{{ session.started_at.strftime('%b %d, %Y · %H:%M') }}</td>
+            <td>
+              <span class="badge {% if session.status == 'flagged' %}badge-danger{% elif session.status == 'completed' %}badge-success{% elif session.status == 'active' %}badge-warning{% else %}badge-muted{% endif %}">
+                {{ session.status }}
+              </span>
+            </td>
+            <td style="font-weight:600;font-family:var(--font-mono);">
+              {{ session.score if session.score is not none else '—' }}
+              <span style="color:var(--text-3);font-size:0.78rem;">/ {{ session.exam.total_marks }}</span>
+            </td>
+            <td>
+              {% if session.total_violations > 0 %}
+              <span style="color:var(--warning);font-weight:600;font-family:var(--font-mono);">{{ session.total_violations }}</span>
+              {% else %}
+              <span style="color:var(--success);font-weight:600;font-family:var(--font-mono);">0</span>
+              {% endif %}
+            </td>
+            <td style="padding-right:20px;font-weight:700;font-family:var(--font-mono);color:{{ 'var(--danger)' if session.risk_score >= 7 else ('var(--warning)' if session.risk_score >= 4 else 'var(--success)') }};">
+              {{ session.risk_score|round(1) }}<span style="color:var(--text-3);font-size:0.75rem;font-weight:400;"> / 10</span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state" style="padding:80px 20px;">
+      <div class="icon">📋</div>
+      <h3>No exam history</h3>
+      <p>Complete an exam to see your history here</p>
+      <a href="{{ url_for('exam.student_dashboard') }}" class="btn btn-primary" style="margin-top:16px;">Go to Dashboard</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

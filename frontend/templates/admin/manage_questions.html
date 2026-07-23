@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+{% block title %}Manage Questions — {{ exam.title }} — ExamSentinelX AI{% endblock %}
+
+{% block extra_css %}
+<style>
+.admin-layout { 
+  display: grid; 
+  grid-template-columns: 280px 1fr; 
+  min-height: calc(100vh - 72px);
+  background: radial-gradient(circle at 100% 0%, rgba(0, 245, 255, 0.03) 0%, transparent 50%);
+}
+
+.admin-sidebar { 
+  background: rgba(10, 14, 20, 0.5); 
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-right: 1px solid var(--border-glass); 
+  padding: 32px 0; 
+}
+
+.admin-sidebar a { 
+  display: flex; align-items: center; gap: 12px; 
+  padding: 14px 24px; 
+  color: var(--text-secondary); 
+  font-size: 0.95rem; 
+  font-weight: 500;
+  transition: all var(--transition-fast); 
+  border-left: 3px solid transparent; 
+  text-decoration: none; 
+}
+
+.admin-sidebar a:hover, .admin-sidebar a.active { 
+  color: var(--text-primary); 
+  background: rgba(0, 245, 255, 0.05); 
+  border-left-color: var(--accent-primary); 
+  box-shadow: inset 4px 0 12px rgba(0, 245, 255, 0.05);
+}
+
+.admin-content { 
+  padding: 40px 48px; 
+  overflow-y: auto; 
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-layout">
+  
+  <!-- Sidebar -->
+  <div class="admin-sidebar">
+    <div style="padding:0 24px 24px; border-bottom:1px solid var(--border-glass); margin-bottom:16px;">
+      <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:8px; font-weight:600;">System Admin</div>
+      <div style="font-family:var(--font-display); font-weight:700; font-size:1.1rem; color:var(--text-primary);">{{ current_user.full_name }}</div>
+    </div>
+    <a href="{{ url_for('admin.dashboard') }}" id="sidebar-dashboard">
+      <span style="font-size:1.2rem; opacity:0.8;">📊</span> Control Center
+    </a>
+    <a href="{{ url_for('admin.exams') }}" class="active" id="sidebar-exams">
+      <span style="font-size:1.2rem; opacity:0.8;">📝</span> Assessment Config
+    </a>
+    <a href="{{ url_for('admin.users') }}" id="sidebar-users">
+      <span style="font-size:1.2rem; opacity:0.8;">👥</span> Personnel Access
+    </a>
+    <a href="{{ url_for('admin.students') }}" id="sidebar-students">
+      <span style="font-size:1.2rem; opacity:0.8;">🎓</span> Candidate Profiles
+    </a>
+    <a href="{{ url_for('admin.create_exam') }}" id="sidebar-create-exam">
+      <span style="font-size:1.2rem; opacity:0.8;">➕</span> Deploy Assessment
+    </a>
+  </div>
+
+  <div class="admin-content">
+
+    <!-- Header -->
+    <div style="margin-bottom: 40px;">
+      <a href="{{ url_for('admin.exams') }}" class="btn btn-outline btn-sm" style="margin-bottom: 20px; display:inline-block;">
+        ← Return to Registry
+      </a>
+      <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
+        <div>
+          <h1 style="font-size:2.2rem; font-weight:700; letter-spacing:-0.03em; margin-bottom: 8px;">Protocol Logic Editor</h1>
+          <p class="text-secondary" style="font-size:1.05rem; font-family:var(--font-mono); margin-bottom: 4px;">
+            <strong style="color: var(--accent-primary);">ID: {{ exam.title|upper }}</strong>
+            <span style="opacity:0.5; margin:0 8px;">|</span>
+            CLASS: {{ (exam.subject or 'N/A')|upper }}
+            <span style="opacity:0.5; margin:0 8px;">|</span>
+            T-MAX: {{ exam.duration_minutes }}M
+          </p>
+        </div>
+        <div style="display: flex; gap: 16px; align-items: center;">
+          <span class="badge badge-info" style="font-family:var(--font-mono);">{{ questions | length }} NODE(S)</span>
+          <form method="POST" action="{{ url_for('admin.toggle_exam', exam_id=exam.id) }}" style="margin:0;">
+            <button type="submit" class="btn {{ 'btn-danger' if exam.is_active else 'btn-success' }}">
+              {{ '⏸ SUSPEND' if exam.is_active else '▶ ENGAGE' }}
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ 'danger' if category == 'error' else category }}" style="margin-bottom:24px;">
+          {{ message }}
+        </div>
+      {% endfor %}
+    {% endwith %}
+
+    <!-- ── Existing Questions ───────────────────────────────────────────────────── -->
+    {% if questions %}
+      <div id="questions-container" style="margin-bottom: 40px;">
+        {% for q in questions %}
+        <div class="card-glass question-card animate-fadein" style="margin-bottom: 16px; padding: 24px;">
+          <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px;">
+            <div style="flex:1;">
+              <div style="display:flex; align-items:center; gap:16px; margin-bottom:20px;">
+                <span class="question-num">NODE {{ String(loop.index).padStart(2, '0') }}</span>
+                <span style="font-size:1.05rem; font-weight:500; color:var(--text-primary); line-height:1.5;">{{ q.question_text }}</span>
+              </div>
+              <div class="options-grid">
+                <div class="opt-chip {{ 'opt-correct' if q.correct_answer == 'A' else '' }}">
+                  <strong style="color:var(--text-muted);">V_A:</strong> {{ q.option_a }}
+                  {% if q.correct_answer == 'A' %}<span class="correct-check">✓ TARGET</span>{% endif %}
+                </div>
+                <div class="opt-chip {{ 'opt-correct' if q.correct_answer == 'B' else '' }}">
+                  <strong style="color:var(--text-muted);">V_B:</strong> {{ q.option_b }}
+                  {% if q.correct_answer == 'B' %}<span class="correct-check">✓ TARGET</span>{% endif %}
+                </div>
+                <div class="opt-chip {{ 'opt-correct' if q.correct_answer == 'C' else '' }}">
+                  <strong style="color:var(--text-muted);">V_C:</strong> {{ q.option_c }}
+                  {% if q.correct_answer == 'C' %}<span class="correct-check">✓ TARGET</span>{% endif %}
+                </div>
+                <div class="opt-chip {{ 'opt-correct' if q.correct_answer == 'D' else '' }}">
+                  <strong style="color:var(--text-muted);">V_D:</strong> {{ q.option_d }}
+                  {% if q.correct_answer == 'D' %}<span class="correct-check">✓ TARGET</span>{% endif %}
+                </div>
+              </div>
+            </div>
+            <div style="display:flex; flex-direction:column; align-items:flex-end; gap:12px; flex-shrink:0;">
+              <span class="badge badge-info" style="font-family:var(--font-mono);">VALUE: {{ q.marks }}</span>
+              <form method="POST" action="{{ url_for('admin.delete_question', question_id=q.id) }}"
+                    onsubmit="return confirm('Purge logic node?');" style="margin:0;">
+                <button type="submit" class="btn btn-sm btn-danger" style="padding:6px 12px; font-family:var(--font-mono);">[ PURGE ]</button>
+              </form>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="card-glass" style="text-align:center; padding: 60px; margin-bottom: 40px;">
+        <div style="font-size: 3rem; margin-bottom: 16px; opacity:0.5;">⚙️</div>
+        <h3 style="margin-bottom: 8px; font-family:var(--font-mono);">LOGIC MATRIX EMPTY</h3>
+        <p class="text-muted">Initialize the first node using the configuration panel below.</p>
+      </div>
+    {% endif %}
+
+    <!-- ── Add New Question Form ──────────────────────────────────────────────── -->
+    <div class="card-glass" id="add-question-card">
+      <div class="card-header" style="border-bottom: 1px solid var(--border-glass); padding-bottom: 16px; margin-bottom: 24px;">
+        <span class="card-title" style="font-size: 1.2rem;">[+] Append Logic Node</span>
+      </div>
+
+      <form method="POST" action="{{ url_for('admin.add_question', exam_id=exam.id) }}" id="add-q-form">
+        <div class="form-group" style="margin-top: 8px;">
+          <label class="form-label">Query Parameter *</label>
+          <textarea name="question_text" id="q-text" class="form-control" rows="2"
+                    placeholder="Enter the assessment query..." required></textarea>
+        </div>
+
+        <div class="grid-2" style="margin-top: 16px;">
+          <div class="form-group">
+            <label class="form-label">Vector A *</label>
+            <input type="text" name="option_a" class="form-control" placeholder="Input A" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Vector B *</label>
+            <input type="text" name="option_b" class="form-control" placeholder="Input B" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Vector C *</label>
+            <input type="text" name="option_c" class="form-control" placeholder="Input C" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Vector D *</label>
+            <input type="text" name="option_d" class="form-control" placeholder="Input D" required>
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-top: 16px;">
+          <div class="form-group">
+            <label class="form-label">Target Vector (Correct Answer) *</label>
+            <select name="correct_answer" class="form-control" required>
+              <option value="">-- Await Target Selection --</option>
+              <option value="A">Vector A</option>
+              <option value="B">Vector B</option>
+              <option value="C">Vector C</option>
+              <option value="D">Vector D</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Node Value (Marks)</label>
+            <input type="number" name="marks" class="form-control" value="1" min="1" max="20">
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100" style="margin-top: 32px; padding: 16px; font-family:var(--font-mono); letter-spacing:0.1em;" id="add-q-submit">
+          [ COMMIT NODE TO MATRIX ]
+        </button>
+      </form>
+    </div>
+
+  </div>
+</div>
+
+<style>
+  .question-card { transition: border-color 0.2s, box-shadow 0.2s; background: rgba(255,255,255,0.01); }
+  .question-card:hover { border-color: rgba(0,245,255,0.3); box-shadow: var(--shadow-float); }
+
+  .question-num {
+    display: inline-block;
+    background: var(--gradient-accent);
+    color: #000;
+    font-size: 0.75rem;
+    font-weight: 700;
+    font-family: var(--font-mono);
+    padding: 4px 12px;
+    border-radius: var(--radius-full);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .options-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  @media (max-width: 600px) {
+    .options-grid { grid-template-columns: 1fr; }
+  }
+
+  .opt-chip {
+    background: rgba(0,0,0,0.2);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-md);
+    padding: 12px 16px;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+  }
+
+  .opt-correct {
+    border-color: rgba(41,255,198,0.4);
+    background: rgba(41,255,198,0.1);
+    color: var(--accent-emerald);
+    box-shadow: inset 4px 0 0 var(--accent-emerald);
+  }
+
+  .correct-check {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--accent-emerald);
+    margin-left: 8px;
+    font-family: var(--font-mono);
+  }
+</style>
+{% endblock %}

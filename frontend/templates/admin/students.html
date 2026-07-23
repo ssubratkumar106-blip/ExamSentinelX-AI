@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}Students — ExamSentinelX AI{% endblock %}
+
+{% block extra_css %}
+<style>
+.admin-wrap { display:grid; grid-template-columns:var(--sidebar-w) 1fr; min-height:calc(100vh - var(--nav-h)); }
+.admin-sidebar {
+  background:var(--bg-surface); border-right:1px solid var(--border);
+  padding:16px 0; position:sticky; top:var(--nav-h);
+  height:calc(100vh - var(--nav-h)); overflow-y:auto;
+}
+.admin-main { padding:32px 36px; background:var(--bg-base); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-wrap">
+  <aside class="admin-sidebar">
+    <div style="padding:12px 16px 16px;border-bottom:1px solid var(--border);margin-bottom:8px;">
+      <div style="font-size:0.7rem;color:var(--text-4);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px;">Administrator</div>
+      <div style="font-size:0.9rem;font-weight:600;color:var(--text-1);">{{ current_user.full_name }}</div>
+    </div>
+    <div style="padding:0 8px;">
+      <div class="sidebar-section-label" style="padding:0 8px;">Overview</div>
+      <a href="{{ url_for('admin.dashboard') }}" class="sidebar-link" id="sb-dashboard"><span class="icon">📊</span> Dashboard</a>
+      <a href="{{ url_for('admin.exams') }}" class="sidebar-link" id="sb-exams"><span class="icon">📝</span> Exams</a>
+      <div class="sidebar-section-label" style="padding:0 8px;margin-top:16px;">Users</div>
+      <a href="{{ url_for('admin.students') }}" class="sidebar-link active" id="sb-students"><span class="icon">👤</span> Students</a>
+      <a href="{{ url_for('admin.users') }}" class="sidebar-link" id="sb-users"><span class="icon">🔑</span> All Users</a>
+      <div class="sidebar-section-label" style="padding:0 8px;margin-top:16px;">Actions</div>
+      <a href="{{ url_for('admin.create_exam') }}" class="sidebar-link" id="sb-create"><span class="icon">＋</span> Create Exam</a>
+    </div>
+  </aside>
+
+  <main class="admin-main">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Students</h1>
+        <p class="page-subtitle">Manage student accounts and view performance metrics</p>
+      </div>
+      <span class="badge badge-accent">{{ students|length }} total</span>
+    </div>
+
+    <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;">
+      {% if students %}
+      <div class="table-wrap" style="border:none;border-radius:0;">
+        <table>
+          <thead>
+            <tr>
+              <th style="padding-left:20px;">Student</th>
+              <th>Email</th>
+              <th>Sessions</th>
+              <th>Flagged</th>
+              <th>Violations</th>
+              <th>Avg Risk</th>
+              <th style="text-align:right;padding-right:20px;">Status / Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in students %}
+            <tr>
+              <td style="padding-left:20px;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <div style="width:32px;height:32px;border-radius:50%;background:var(--accent-subtle);border:1px solid var(--border-glow);display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:600;color:var(--accent-hover);flex-shrink:0;">{{ s.user.full_name[0].upper() }}</div>
+                  <div>
+                    <div style="font-weight:600;color:var(--text-1);">{{ s.user.full_name }}</div>
+                    <div style="font-size:0.75rem;color:var(--text-3);font-family:var(--font-mono);">@{{ s.user.username }}</div>
+                  </div>
+                </div>
+              </td>
+              <td style="font-size:0.82rem;color:var(--text-2);">{{ s.user.email }}</td>
+              <td style="font-weight:600;color:var(--text-1);">{{ s.total_sessions }}</td>
+              <td>
+                {% if s.flagged_sessions > 0 %}
+                <span class="badge badge-danger">{{ s.flagged_sessions }}</span>
+                {% else %}
+                <span class="badge badge-success">0</span>
+                {% endif %}
+              </td>
+              <td style="font-weight:600;color:{{ 'var(--warning)' if s.total_violations > 0 else 'var(--success)' }};">{{ s.total_violations }}</td>
+              <td>
+                <span style="font-weight:700;font-family:var(--font-mono);font-size:0.85rem;color:{{ 'var(--danger)' if s.avg_risk >= 7 else ('var(--warning)' if s.avg_risk >= 4 else 'var(--success)') }};">
+                  {{ s.avg_risk }}/10
+                </span>
+              </td>
+              <td style="text-align:right;padding-right:20px;">
+                <div style="display:flex;align-items:center;gap:8px;justify-content:flex-end;">
+                  <span class="badge {% if s.user.is_active %}badge-success{% else %}badge-muted{% endif %}">
+                    {{ 'Active' if s.user.is_active else 'Suspended' }}
+                  </span>
+                  {% if s.user.id != current_user.id %}
+                  <form method="POST" action="{{ url_for('admin.toggle_user', user_id=s.user.id) }}" style="display:inline;margin:0;">
+                    <button type="submit" class="btn btn-ghost btn-sm" id="toggle-{{ s.user.id }}">
+                      {{ 'Suspend' if s.user.is_active else 'Restore' }}
+                    </button>
+                  </form>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty-state" style="padding:80px 20px;">
+        <div class="icon">👤</div>
+        <h3>No students yet</h3>
+        <p>Students will appear here after they register</p>
+      </div>
+      {% endif %}
+    </div>
+  </main>
+</div>
+{% endblock %}

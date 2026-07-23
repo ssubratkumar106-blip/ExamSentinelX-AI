@@ -1,0 +1,40 @@
+# ExamSentinelX AI — Python Dependencies
+# Install with: pip install -r requirements.txt
+
+# ── Web Framework ──────────────────────────────────────────────────────────────
+Flask==3.0.3
+Flask-SQLAlchemy==3.1.1
+Flask-Login==0.6.3
+Flask-CORS==4.0.1
+flask-socketio==5.3.6
+Werkzeug==3.0.3
+
+# ── Database ───────────────────────────────────────────────────────────────────
+SQLAlchemy==2.0.31
+
+# ── AI / Computer Vision ──────────────────────────────────────────────────────
+opencv-python==4.10.0.84
+mediapipe==0.10.14
+ultralytics==8.2.87         # YOLOv8 — Ultralytics official package
+numpy==1.26.4
+Pillow==10.4.0
+
+# ── Authentication & Security ──────────────────────────────────────────────────
+bcrypt==4.1.3
+PyJWT==2.8.0
+python-dotenv==1.0.1
+Authlib==1.3.0
+requests==2.31.0
+Flask-Mail==0.9.1
+
+# ── PDF Report Generation ─────────────────────────────────────────────────────
+reportlab==4.2.2
+fpdf2==2.7.9
+
+# ── Utilities ─────────────────────────────────────────────────────────────────
+python-dateutil==2.9.0
+eventlet==0.36.1             # For Flask-SocketIO async support
+
+# ── Development / Testing ─────────────────────────────────────────────────────
+pytest==8.2.2
+pytest-flask==1.3.0

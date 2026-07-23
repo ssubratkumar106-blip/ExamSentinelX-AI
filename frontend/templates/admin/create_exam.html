@@ -1,0 +1,420 @@
+{% extends "base.html" %}
+{% block title %}Create Exam — ExamSentinelX AI{% endblock %}
+
+{% block extra_css %}
+<style>
+.admin-layout { 
+  display: grid; 
+  grid-template-columns: 280px 1fr; 
+  min-height: calc(100vh - 72px);
+  background: radial-gradient(circle at 100% 0%, rgba(0, 245, 255, 0.03) 0%, transparent 50%);
+}
+
+.admin-sidebar { 
+  background: rgba(10, 14, 20, 0.5); 
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-right: 1px solid var(--border-glass); 
+  padding: 32px 0; 
+}
+
+.admin-sidebar a { 
+  display: flex; align-items: center; gap: 12px; 
+  padding: 14px 24px; 
+  color: var(--text-secondary); 
+  font-size: 0.95rem; 
+  font-weight: 500;
+  transition: all var(--transition-fast); 
+  border-left: 3px solid transparent; 
+  text-decoration: none; 
+}
+
+.admin-sidebar a:hover, .admin-sidebar a.active { 
+  color: var(--text-primary); 
+  background: rgba(0, 245, 255, 0.05); 
+  border-left-color: var(--accent-primary); 
+  box-shadow: inset 4px 0 12px rgba(0, 245, 255, 0.05);
+}
+
+.admin-content { 
+  padding: 40px 48px; 
+  overflow-y: auto; 
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-layout">
+
+  <!-- Sidebar -->
+  <div class="admin-sidebar">
+    <div style="padding:0 24px 24px; border-bottom:1px solid var(--border-glass); margin-bottom:16px;">
+      <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:8px; font-weight:600;">System Admin</div>
+      <div style="font-family:var(--font-display); font-weight:700; font-size:1.1rem; color:var(--text-primary);">{{ current_user.full_name }}</div>
+    </div>
+    <a href="{{ url_for('admin.dashboard') }}" id="sidebar-dashboard">
+      <span style="font-size:1.2rem; opacity:0.8;">📊</span> Control Center
+    </a>
+    <a href="{{ url_for('admin.exams') }}" id="sidebar-exams">
+      <span style="font-size:1.2rem; opacity:0.8;">📝</span> Assessment Config
+    </a>
+    <a href="{{ url_for('admin.users') }}" id="sidebar-users">
+      <span style="font-size:1.2rem; opacity:0.8;">👥</span> Personnel Access
+    </a>
+    <a href="{{ url_for('admin.students') }}" id="sidebar-students">
+      <span style="font-size:1.2rem; opacity:0.8;">🎓</span> Candidate Profiles
+    </a>
+    <a href="{{ url_for('admin.create_exam') }}" class="active" id="sidebar-create-exam">
+      <span style="font-size:1.2rem; opacity:0.8;">➕</span> Deploy Assessment
+    </a>
+  </div>
+
+  <!-- Main Content -->
+  <div class="admin-content">
+    <!-- Header -->
+    <div style="margin-bottom: 40px;">
+      <a href="{{ url_for('admin.exams') }}" class="btn btn-outline btn-sm" style="margin-bottom:20px; display:inline-block;">
+        ← Return to Registry
+      </a>
+      <h1 style="font-size:2.2rem; font-weight:700; letter-spacing:-0.03em;">Initialize Protocol</h1>
+      <p class="text-secondary" style="font-size:1.05rem; margin-top:4px;">Configure examination parameters and assessment logic.</p>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+      <div class="alert alert-{{ 'danger' if category == 'error' else category }}" style="margin-bottom:24px;">{{ message }}</div>
+      {% endfor %}
+    {% endwith %}
+
+  <form method="POST" action="{{ url_for('admin.create_exam') }}" id="create-exam-form">
+
+    <!-- ── Exam Details Card ─────────────────────────────────────────────────── -->
+    <div class="card-glass" style="margin-bottom: 32px;">
+      <div class="card-header" style="border-bottom: 1px solid var(--border-glass); padding-bottom: 16px; margin-bottom: 24px;">
+        <span class="card-title" style="font-size: 1.2rem;">📋 Assessment Parameters</span>
+      </div>
+
+      <div class="grid-2">
+        <div class="form-group">
+          <label class="form-label">Protocol Designation (Title) *</label>
+          <input type="text" name="title" id="exam-title" class="form-control"
+                 placeholder="e.g. Advanced Quantum Mechanics" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Category</label>
+          <input type="text" name="subject" class="form-control" placeholder="e.g. Physics">
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-top: 16px;">
+        <label class="form-label">Description</label>
+        <textarea name="description" class="form-control" rows="3"
+                  placeholder="Define the scope of this assessment..."></textarea>
+      </div>
+
+      <div class="grid-2" style="margin-top: 16px;">
+        <div class="form-group">
+          <label class="form-label">Execution Window (Minutes)</label>
+          <input type="number" name="duration_minutes" class="form-control"
+                 value="60" min="5" max="300">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Maximum Scoring Potential</label>
+          <input type="number" name="total_marks" class="form-control"
+                 value="100" min="1" max="1000">
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Questions Section ─────────────────────────────────────────────────── -->
+    <div class="card-glass" style="margin-bottom: 32px;">
+      <div class="card-header" style="border-bottom: 1px solid var(--border-glass); padding-bottom: 16px; margin-bottom: 24px;">
+        <span class="card-title" style="font-size: 1.2rem;">❓ Assessment Logic</span>
+        <span id="question-count-badge" class="badge badge-info">0 Nodes Configured</span>
+      </div>
+
+      <!-- Hidden container for questions (submitted as JSON) -->
+      <input type="hidden" name="questions_json" id="questions-json" value="[]">
+
+      <!-- Dynamic question list display -->
+      <div id="questions-list" style="margin-bottom: 24px;">
+        <p id="no-questions-msg" class="text-muted" style="text-align:center; padding: 40px 0; font-size: 0.95rem; font-family: var(--font-mono);">
+          NO LOGIC NODES CONFIGURED. INITIALIZE NEW NODE BELOW.
+        </p>
+      </div>
+
+      <!-- Add Question Panel -->
+      <div id="add-question-panel" class="card" style="background: rgba(0,245,255,0.02); border-color: rgba(0,245,255,0.2); display:none; padding: 24px;">
+        <h4 style="margin-bottom: 20px; font-size: 1.05rem;">⚙️ Logic Node Configuration</h4>
+
+        <div class="form-group">
+          <label class="form-label">Query Parameter *</label>
+          <textarea id="q-text" class="form-control" rows="2"
+                    placeholder="Enter the assessment query..."></textarea>
+        </div>
+
+        <div class="grid-2" style="margin-top: 16px;">
+          <div class="form-group">
+            <label class="form-label">Vector A *</label>
+            <input type="text" id="q-opt-a" class="form-control" placeholder="Input A">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Vector B *</label>
+            <input type="text" id="q-opt-b" class="form-control" placeholder="Input B">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Vector C *</label>
+            <input type="text" id="q-opt-c" class="form-control" placeholder="Input C">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Vector D *</label>
+            <input type="text" id="q-opt-d" class="form-control" placeholder="Input D">
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-top: 16px;">
+          <div class="form-group">
+            <label class="form-label">Target Vector (Correct Answer) *</label>
+            <select id="q-correct" class="form-control">
+              <option value="">-- Await Target Selection --</option>
+              <option value="A">Vector A</option>
+              <option value="B">Vector B</option>
+              <option value="C">Vector C</option>
+              <option value="D">Vector D</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Node Value (Marks)</label>
+            <input type="number" id="q-marks" class="form-control" value="1" min="1" max="20">
+          </div>
+        </div>
+
+        <div style="display:flex; gap:16px; margin-top:24px;">
+          <button type="button" class="btn btn-success" onclick="saveQuestion()" id="save-q-btn">
+            Commit Node
+          </button>
+          <button type="button" class="btn btn-outline" onclick="cancelQuestion()">
+            Abort
+          </button>
+        </div>
+      </div>
+
+      <!-- Add Question Button -->
+      <button type="button" class="btn btn-outline w-100" id="add-q-btn"
+              onclick="showAddQuestion()" style="margin-top: 16px; border-style: dashed; padding: 20px; font-family: var(--font-mono); letter-spacing: 0.05em;">
+        [+] INITIALIZE LOGIC NODE
+      </button>
+    </div>
+
+    <!-- ── Submit ─────────────────────────────────────────────────────────────── -->
+    <button type="submit" class="btn btn-primary btn-lg w-100" id="create-exam-btn" style="padding: 20px; font-size: 1.1rem; letter-spacing: 0.1em; text-transform: uppercase;">
+      Execute Deployment
+    </button>
+
+  </form>
+  </div><!-- /.admin-content -->
+</div><!-- /.admin-layout -->
+
+
+<style>
+  .question-item {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-md);
+    padding: 24px;
+    margin-bottom: 16px;
+    animation: fadeIn 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .question-item-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .question-num {
+    background: var(--gradient-accent);
+    color: #000;
+    font-size: 0.75rem;
+    font-weight: 700;
+    font-family: var(--font-mono);
+    padding: 4px 12px;
+    border-radius: var(--radius-full);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .question-text-display {
+    font-size: 1.05rem;
+    color: var(--text-primary);
+    font-weight: 500;
+    flex: 1;
+    line-height: 1.5;
+  }
+  .question-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 20px;
+  }
+  .opt-chip {
+    background: rgba(0,0,0,0.2);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-md);
+    padding: 12px 16px;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+  }
+  .opt-chip.correct {
+    border-color: rgba(41,255,198,0.4);
+    color: var(--accent-emerald);
+    background: rgba(41,255,198,0.1);
+    box-shadow: inset 4px 0 0 var(--accent-emerald);
+  }
+  .delete-q-btn {
+    background: rgba(255,92,117,0.1);
+    border: 1px solid rgba(255,92,117,0.3);
+    color: var(--accent-danger);
+    border-radius: var(--radius-sm);
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .delete-q-btn:hover {
+    background: var(--accent-danger);
+    color: #000;
+    box-shadow: 0 0 15px rgba(255,92,117,0.4);
+  }
+</style>
+
+<script>
+  let questions = [];
+
+  function showAddQuestion() {
+    document.getElementById('add-question-panel').style.display = 'block';
+    document.getElementById('add-q-btn').style.display = 'none';
+    clearQuestionForm();
+    document.getElementById('q-text').focus();
+  }
+
+  function cancelQuestion() {
+    document.getElementById('add-question-panel').style.display = 'none';
+    document.getElementById('add-q-btn').style.display = 'block';
+  }
+
+  function clearQuestionForm() {
+    ['q-text', 'q-opt-a', 'q-opt-b', 'q-opt-c', 'q-opt-d'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+    document.getElementById('q-correct').value = '';
+    document.getElementById('q-marks').value = '1';
+  }
+
+  function saveQuestion() {
+    const text    = document.getElementById('q-text').value.trim();
+    const optA    = document.getElementById('q-opt-a').value.trim();
+    const optB    = document.getElementById('q-opt-b').value.trim();
+    const optC    = document.getElementById('q-opt-c').value.trim();
+    const optD    = document.getElementById('q-opt-d').value.trim();
+    const correct = document.getElementById('q-correct').value;
+    const marks   = parseInt(document.getElementById('q-marks').value) || 1;
+
+    if (!text || !optA || !optB || !optC || !optD || !correct) {
+      showToast('⚠️ Logic Error: Complete all node parameters prior to commit.', 'warning');
+      return;
+    }
+
+    const q = {
+      text, option_a: optA, option_b: optB, option_c: optC, option_d: optD,
+      correct_answer: correct, marks, order: questions.length
+    };
+
+    questions.push(q);
+    renderQuestions();
+    cancelQuestion();
+    updateJsonField();
+  }
+
+  function deleteQuestion(index) {
+    questions.splice(index, 1);
+    // Re-number orders
+    questions.forEach((q, i) => q.order = i);
+    renderQuestions();
+    updateJsonField();
+  }
+
+  function renderQuestions() {
+    const list = document.getElementById('questions-list');
+    const noMsg = document.getElementById('no-questions-msg');
+    const badge = document.getElementById('question-count-badge');
+
+    badge.textContent = questions.length + ' Node(s) Configured';
+
+    if (questions.length === 0) {
+      list.innerHTML = '';
+      noMsg.style.display = 'block';
+      list.appendChild(noMsg);
+      return;
+    }
+
+    noMsg.style.display = 'none';
+    list.innerHTML = '';
+
+    questions.forEach((q, i) => {
+      const el = document.createElement('div');
+      el.className = 'question-item';
+      el.innerHTML = `
+        <div class="question-item-header">
+          <span class="question-num">NODE ${String(i + 1).padStart(2, '0')}</span>
+          <span class="question-text-display">${escHtml(q.text)}</span>
+          <button type="button" class="delete-q-btn" onclick="deleteQuestion(${i})">Purge Node</button>
+        </div>
+        <div class="question-options">
+          <div class="opt-chip ${q.correct_answer === 'A' ? 'correct' : ''}">V_A: ${escHtml(q.option_a)} ${q.correct_answer === 'A' ? '✓' : ''}</div>
+          <div class="opt-chip ${q.correct_answer === 'B' ? 'correct' : ''}">V_B: ${escHtml(q.option_b)} ${q.correct_answer === 'B' ? '✓' : ''}</div>
+          <div class="opt-chip ${q.correct_answer === 'C' ? 'correct' : ''}">V_C: ${escHtml(q.option_c)} ${q.correct_answer === 'C' ? '✓' : ''}</div>
+          <div class="opt-chip ${q.correct_answer === 'D' ? 'correct' : ''}">V_D: ${escHtml(q.option_d)} ${q.correct_answer === 'D' ? '✓' : ''}</div>
+        </div>
+        <div style="margin-top:16px; font-size:0.85rem; color:var(--text-muted); font-family:var(--font-mono);">
+          VALUE: <strong style="color:var(--accent-emerald)">${q.marks} PTS</strong>
+        </div>
+      `;
+      list.appendChild(el);
+    });
+  }
+
+  function updateJsonField() {
+    document.getElementById('questions-json').value = JSON.stringify(questions);
+  }
+
+  function escHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function showToast(msg, type) {
+    const t = document.createElement('div');
+    t.className = `toast toast-${type || 'info'}`;
+    t.style.cssText = 'position:fixed;top:24px;right:24px;z-index:9999;padding:16px 24px;background:var(--bg-glass-hover);backdrop-filter:blur(16px);border:1px solid var(--border-glass);border-radius:12px;box-shadow:var(--shadow-float);animation:slideIn 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);color:var(--text-primary);border-left:4px solid var(--accent-primary);font-weight:500;';
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => {
+      t.style.opacity = '0';
+      t.style.transform = 'translateX(20px)';
+      setTimeout(() => t.remove(), 500);
+    }, 4000);
+  }
+
+  // Form submit guard
+  document.getElementById('create-exam-form').addEventListener('submit', function(e) {
+    const title = document.getElementById('exam-title').value.trim();
+    if (!title) { e.preventDefault(); showToast('⚠️ Designation failure: Protocol requires a title.', 'warning'); return; }
+    if (questions.length === 0) {
+      if (!confirm('Warning: Protocol logic is empty. Deploy empty assessment shell?')) {
+        e.preventDefault(); return;
+      }
+    }
+    updateJsonField();
+  });
+</script>
+{% endblock %}

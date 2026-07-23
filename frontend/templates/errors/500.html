@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}500 — Server Fault{% endblock %}
+{% block content %}
+<div style="min-height: calc(100vh - 72px); display:flex; align-items:center; justify-content:center; text-align:center; padding:40px; position:relative;">
+  <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); width:600px; height:600px; background:radial-gradient(circle, rgba(255,92,117,0.05) 0%, transparent 60%); z-index:-1; pointer-events:none;"></div>
+  
+  <div class="card-glass" style="max-width: 500px; width: 100%; padding: 60px 40px; border-color: rgba(255, 92, 117, 0.3); box-shadow: 0 0 40px rgba(255, 92, 117, 0.1);">
+    <div style="font-family:var(--font-mono); font-size:6rem; font-weight:700; color:var(--accent-danger); line-height:1; margin-bottom:16px; text-shadow: 0 0 20px currentColor;">500</div>
+    <h2 style="font-size: 1.5rem; color:var(--text-primary); margin-bottom:12px; letter-spacing:-0.03em;">SYSTEM FAULT DETECTED</h2>
+    <p class="text-secondary" style="margin-bottom:32px; font-family:var(--font-mono); font-size:0.9rem;">
+      An internal core failure occurred while processing your request. Diagnostics have been logged for engineering review.
+    </p>
+    <a href="{{ url_for('index') }}" class="btn btn-outline w-100" style="font-family:var(--font-mono); letter-spacing:0.1em; padding:12px;">[ RESTART SESSION ]</a>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,262 @@
+{% extends "base.html" %}
+{% block title %}My Dashboard — ExamSentinelX AI{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Exam cards ── */
+.exam-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  transition: all var(--t-smooth);
+  margin-bottom: 10px;
+}
+.exam-card:hover {
+  border-color: var(--border-glow);
+  background: var(--bg-hover);
+  box-shadow: 0 0 0 1px rgba(59,130,246,0.1);
+}
+.exam-card-title  { font-weight: 600; color: var(--text-1); margin-bottom: 5px; }
+.exam-card-meta   { font-size: 0.74rem; color: var(--text-3); font-family: var(--font-mono); display: flex; gap: 12px; }
+
+/* ── Session rows ── */
+.session-row {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+  margin-bottom: 8px;
+  background: var(--bg-elevated);
+  transition: border-color var(--t-fast);
+}
+.session-row:hover { border-color: var(--border-strong); }
+.session-row-top  { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.session-row-meta { display: flex; gap: 16px; font-size: 0.75rem; font-family: var(--font-mono); color: var(--text-3); flex-wrap: wrap; }
+
+/* ── Risk indicator mini ── */
+.risk-mini {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 0.75rem; font-family: var(--font-mono);
+  font-weight: 700;
+}
+.risk-mini-bar {
+  width: 50px; height: 3px;
+  background: var(--border); border-radius: 99px; overflow: hidden;
+}
+.risk-mini-fill { height: 100%; border-radius: 99px; }
+
+/* ── Welcome banner ── */
+.welcome-banner {
+  background: linear-gradient(135deg, rgba(59,130,246,0.08) 0%, rgba(16,185,129,0.05) 100%);
+  border: 1px solid rgba(59,130,246,0.15);
+  border-radius: var(--radius-lg);
+  padding: 24px 28px;
+  margin-bottom: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+.welcome-text h2 { font-size: 1.3rem; font-weight: 700; letter-spacing: -0.03em; margin-bottom: 4px; }
+.welcome-text p  { font-size: 0.875rem; color: var(--text-3); margin: 0; }
+.ai-status-pill {
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(16,185,129,0.08);
+  border: 1px solid rgba(16,185,129,0.2);
+  padding: 8px 14px; border-radius: 99px;
+  font-size: 0.78rem; font-weight: 600; color: var(--success);
+  white-space: nowrap; flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .app-content { padding: 20px; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="app-layout">
+
+  <!-- ── Sidebar ───────────────────────────────────────────── -->
+  <aside class="app-sidebar">
+    <div style="padding:12px 16px 16px;border-bottom:1px solid var(--border);margin-bottom:8px;">
+      <div style="font-size:0.7rem;color:var(--text-4);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px;">Student</div>
+      <div style="font-size:0.9rem;font-weight:600;color:var(--text-1);">{{ current_user.full_name }}</div>
+      <div style="font-size:0.75rem;color:var(--text-3);margin-top:2px;">@{{ current_user.username }}</div>
+    </div>
+
+    <div style="padding:0 8px;">
+      <div class="sidebar-section-label" style="padding:0 8px;">My Space</div>
+      <a href="{{ url_for('exam.student_dashboard') }}" class="sidebar-link active" id="sb-home">
+        <span class="icon">🏠</span> Dashboard
+      </a>
+      <a href="{{ url_for('exam.exam_history') }}" class="sidebar-link" id="sb-history">
+        <span class="icon">📋</span> Exam History
+      </a>
+
+      <div class="sidebar-section-label" style="padding:0 8px;margin-top:16px;">Exams</div>
+      {% for exam in available_exams[:5] %}
+      <a href="#exam-{{ exam.id }}" class="sidebar-link" id="sb-exam-{{ exam.id }}" 
+         onclick="document.getElementById('exam-{{ exam.id }}').scrollIntoView({behavior:'smooth'});return false;">
+        <span class="icon">📝</span>
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:0.82rem;">{{ exam.title }}</span>
+      </a>
+      {% endfor %}
+      {% if not available_exams %}
+      <div style="padding:8px 16px;font-size:0.78rem;color:var(--text-4);">No active exams</div>
+      {% endif %}
+    </div>
+
+    <!-- Sidebar footer -->
+    <div style="margin-top:auto;padding:16px;border-top:1px solid var(--border);">
+      <div style="display:flex;align-items:center;gap:6px;font-size:0.75rem;color:var(--text-3);">
+        <span class="live-dot"></span>
+        <span>AI proctoring ready</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Main Content ──────────────────────────────────────── -->
+  <main class="app-content">
+
+    <!-- Welcome banner -->
+    <div class="welcome-banner">
+      <div class="welcome-text">
+        <h2>Welcome back, {{ current_user.full_name.split()[0] }} 👋</h2>
+        <p>Your AI-proctored exam environment is ready. All sessions are monitored in real-time.</p>
+      </div>
+      <div class="ai-status-pill">
+        <span class="live-dot"></span>
+        AI System Online
+      </div>
+    </div>
+
+    <!-- KPI Cards -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px;">
+      <div class="stat-card">
+        <div class="stat-card-accent" style="background:linear-gradient(90deg,#3B82F6,#10B981);"></div>
+        <div class="stat-icon" style="background:rgba(59, 130, 246,0.1);">📋</div>
+        <div class="stat-number">{{ stats.total_exams }}</div>
+        <div class="stat-label">Exams Available</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-accent" style="background:linear-gradient(90deg,#22c55e,#10b981);"></div>
+        <div class="stat-icon" style="background:rgba(34,197,94,0.1);">✅</div>
+        <div class="stat-number" style="color:var(--success);">{{ stats.completed }}</div>
+        <div class="stat-label">Completed</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-accent" style="background:{% if stats.flagged > 0 %}linear-gradient(90deg,#ef4444,#f97316){% else %}linear-gradient(90deg,#22c55e,#10b981){% endif %};"></div>
+        <div class="stat-icon" style="background:{% if stats.flagged > 0 %}rgba(239,68,68,0.1){% else %}rgba(34,197,94,0.1){% endif %};">🚩</div>
+        <div class="stat-number" style="color:{% if stats.flagged > 0 %}var(--danger){% else %}var(--success){% endif %};">{{ stats.flagged }}</div>
+        <div class="stat-label">Flagged Sessions</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-accent" style="background:{% if stats.total_violations > 0 %}linear-gradient(90deg,#f59e0b,#f97316){% else %}linear-gradient(90deg,#22c55e,#10b981){% endif %};"></div>
+        <div class="stat-icon" style="background:{% if stats.total_violations > 0 %}rgba(245,158,11,0.1){% else %}rgba(34,197,94,0.1){% endif %};">⚠️</div>
+        <div class="stat-number" style="color:{% if stats.total_violations > 0 %}var(--warning){% else %}var(--success){% endif %};">{{ stats.total_violations }}</div>
+        <div class="stat-label">AI Violations</div>
+      </div>
+    </div>
+
+    <!-- Main grid: Exams + Sessions -->
+    <div style="display:grid;grid-template-columns:3fr 2fr;gap:20px;">
+
+      <!-- Available Exams -->
+      <div>
+        <div class="section-header" style="margin-bottom:14px;">
+          <div style="font-size:0.875rem;font-weight:600;color:var(--text-1);">Available Exams</div>
+          <span class="badge badge-accent">{{ available_exams|length }} active</span>
+        </div>
+
+        {% if available_exams %}
+          {% for exam in available_exams %}
+          <div class="exam-card" id="exam-{{ exam.id }}">
+            <div style="min-width:0;">
+              <div class="exam-card-title">{{ exam.title }}</div>
+              <div class="exam-card-meta">
+                <span>⏱ {{ exam.duration_minutes }}m</span>
+                <span>❓ {{ exam.question_count }} questions</span>
+                <span>🏆 {{ exam.total_marks }} pts</span>
+                {% if exam.subject %}<span>📚 {{ exam.subject }}</span>{% endif %}
+              </div>
+            </div>
+            <form method="POST" action="{{ url_for('exam.start_exam', exam_id=exam.id) }}" style="margin:0;flex-shrink:0;">
+              <button type="submit" class="btn btn-primary btn-sm" id="start-{{ exam.id }}">
+                Start Exam →
+              </button>
+            </form>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="card" style="padding:40px;text-align:center;">
+            <div style="font-size:2.5rem;margin-bottom:12px;opacity:0.3;">📭</div>
+            <div style="font-size:0.9rem;font-weight:600;color:var(--text-2);margin-bottom:6px;">No exams available</div>
+            <div style="font-size:0.82rem;color:var(--text-3);">Your administrator hasn't scheduled any exams yet</div>
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- Recent Sessions + AI Summary -->
+      <div>
+        <div class="section-header" style="margin-bottom:14px;">
+          <div style="font-size:0.875rem;font-weight:600;color:var(--text-1);">Recent Sessions</div>
+          <a href="{{ url_for('exam.exam_history') }}" class="btn btn-ghost btn-sm">View all</a>
+        </div>
+
+        {% if sessions %}
+          {% for session in sessions[:6] %}
+          <div class="session-row">
+            <div class="session-row-top">
+              <div style="font-weight:600;font-size:0.875rem;color:var(--text-1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px;">{{ session.exam.title }}</div>
+              <span class="badge {% if session.status == 'flagged' %}badge-danger{% elif session.status == 'completed' %}badge-success{% elif session.status == 'active' %}badge-warning{% else %}badge-muted{% endif %}">
+                {{ session.status }}
+              </span>
+            </div>
+            <div class="session-row-meta">
+              <span>{{ session.started_at.strftime('%b %d') }}</span>
+              {% if session.score is not none %}
+              <span style="color:var(--text-1);font-weight:600;">{{ session.score }}/{{ session.exam.total_marks }}</span>
+              {% endif %}
+              <span style="color:{{ 'var(--warning)' if session.total_violations > 0 else 'var(--success)' }};">{{ session.total_violations }} violations</span>
+            </div>
+            {% if session.risk_score > 0 %}
+            <div class="risk-mini" style="margin-top:8px;">
+              <div class="risk-mini-bar">
+                <div class="risk-mini-fill" style="width:{{ (session.risk_score / 10 * 100)|int }}%;background:{{ 'var(--danger)' if session.risk_score >= 7 else ('var(--warning)' if session.risk_score >= 4 else 'var(--success)') }};"></div>
+              </div>
+              <span style="color:{{ 'var(--danger)' if session.risk_score >= 7 else ('var(--warning)' if session.risk_score >= 4 else 'var(--success)') }};">{{ session.risk_score|round(1) }}/10</span>
+            </div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        {% else %}
+          <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:32px;text-align:center;">
+            <div style="font-size:2rem;margin-bottom:10px;opacity:0.3;">🎯</div>
+            <div style="font-size:0.85rem;color:var(--text-3);">No sessions yet.<br>Start an exam to begin.</div>
+          </div>
+        {% endif %}
+
+        <!-- AI Info Box -->
+        <div style="background:rgba(59, 130, 246,0.05);border:1px solid rgba(59, 130, 246,0.15);border-radius:var(--radius-md);padding:16px;margin-top:16px;">
+          <div style="font-size:0.75rem;font-weight:700;color:var(--accent-hover);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">🛡 AI Monitoring</div>
+          <div style="font-size:0.8rem;color:var(--text-3);line-height:1.65;">
+            Webcam analysis runs during your exam:
+            <ul style="margin:8px 0 0 16px;list-style:disc;display:flex;flex-direction:column;gap:3px;">
+              <li>Face & head pose tracking</li>
+              <li>Phone / object detection</li>
+              <li>Lip movement analysis</li>
+              <li>Multi-person detection</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+{% endblock %}

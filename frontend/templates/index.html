@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+{% block title %}ExamSentinelX AI — Intelligent Proctoring Platform{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Add keyframes for left-side animation */
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.hero-page {
+  min-height: calc(100vh - 60px);
+  display: flex; flex-direction: row;
+  justify-content: space-between; align-items: center;
+  padding: 80px 5% 60px;
+  position: relative;
+  overflow: hidden;
+  gap: 40px;
+}
+.hero-glow {
+  position: absolute; top: -10%; left: -10%;
+  width: 800px; height: 800px;
+  background: radial-gradient(circle, rgba(59, 130, 246,0.15) 0%, transparent 70%);
+  pointer-events: none; z-index: 0;
+}
+.hero-content { 
+  position: relative; z-index: 1; max-width: 650px; text-align: left;
+  animation: slideInLeft 1s ease-out forwards;
+  flex: 1.1;
+}
+
+.hero-media {
+  position: relative; z-index: 1;
+  flex: 0.9;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  animation: slideInRight 1s ease-out forwards;
+  max-width: 600px;
+}
+.hero-video {
+  width: 100%;
+  height: auto;
+  border-radius: 16px;
+  /* Blur/shade the borders of the video to seamlessly blend with background */
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%),
+                      linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%),
+              linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
+  mask-composite: intersect;
+  opacity: 0.85;
+}
+
+.hero-eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(59, 130, 246,0.1);
+  border: 1px solid rgba(59, 130, 246,0.25);
+  border-radius: 99px; padding: 5px 14px;
+  font-size: 0.78rem; font-weight: 600;
+  color: var(--accent-hover);
+  margin-bottom: 28px;
+}
+.hero-eyebrow .dot { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; animation: pulse-dot 2s infinite; }
+
+.hero-h1 {
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  line-height: 1.1;
+  margin-bottom: 24px;
+  color: var(--text-1);
+}
+.hero-h1 em {
+  font-style: normal;
+  background: linear-gradient(135deg, #60A5FA, #F59E0B);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.hero-sub {
+  font-size: 1.15rem; color: var(--text-2);
+  max-width: 600px; margin: 0 0 40px 0;
+  line-height: 1.7; font-weight: 400;
+}
+
+.hero-actions {
+  display: flex; gap: 16px; justify-content: flex-start; flex-wrap: wrap;
+  margin-bottom: 56px;
+}
+
+/* Stats strip */
+.stats-strip {
+  border-top: 1px solid var(--border);
+  padding: 48px 24px;
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  max-width: 900px; margin: 0 auto;
+  text-align: center;
+}
+.stats-strip .stat-item {
+  padding: 0 32px;
+  border-right: 1px solid var(--border);
+}
+.stats-strip .stat-item:last-child { border-right: none; }
+.stat-num {
+  font-size: 2rem; font-weight: 800; letter-spacing: -0.05em;
+  background: linear-gradient(135deg, #60A5FA, #F59E0B);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text; margin-bottom: 4px;
+}
+.stat-desc { font-size: 0.78rem; color: var(--text-3); font-weight: 500; }
+
+/* Features grid */
+.features-section {
+  max-width: 1140px; margin: 0 auto; padding: 64px 24px;
+}
+.section-eyebrow {
+  font-size: 0.78rem; font-weight: 600;
+  color: var(--accent-hover); letter-spacing: 0.05em;
+  text-transform: uppercase; text-align: center;
+  margin-bottom: 12px;
+}
+.section-h {
+  font-size: 1.8rem; font-weight: 700; text-align: center;
+  letter-spacing: -0.04em; margin-bottom: 8px;
+}
+.section-sub {
+  font-size: 0.95rem; color: var(--text-2);
+  text-align: center; margin-bottom: 48px; max-width: 480px;
+  margin-left: auto; margin-right: auto;
+}
+.feature-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  transition: all var(--t-smooth);
+}
+.feature-card:hover {
+  border-color: var(--border-glow);
+  box-shadow: var(--shadow-glow), var(--shadow-md);
+  transform: translateY(-2px);
+}
+.feature-icon {
+  width: 40px; height: 40px;
+  border-radius: var(--radius-md);
+  background: var(--accent-subtle);
+  border: 1px solid rgba(59, 130, 246,0.2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem; margin-bottom: 16px;
+}
+.feature-title { font-size: 0.95rem; font-weight: 600; margin-bottom: 8px; }
+.feature-desc  { font-size: 0.85rem; color: var(--text-3); line-height: 1.65; }
+
+/* CTA */
+.cta-section {
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border);
+  text-align: center; padding: 80px 24px;
+}
+.cta-section h2 {
+  font-size: 1.8rem; font-weight: 700;
+  letter-spacing: -0.04em; margin-bottom: 12px;
+}
+.cta-section p { font-size: 0.95rem; color: var(--text-3); margin-bottom: 32px; }
+
+@media(max-width:1024px){
+  .hero-page { gap: 20px; }
+  .hero-content { flex: 1; }
+  .hero-media { flex: 1; max-width: 45%; }
+}
+
+@media(max-width:768px){
+  .hero-page { 
+    flex-direction: column; 
+    text-align: center; 
+    justify-content: center; 
+    gap: 40px;
+  }
+  .hero-content { text-align: center; animation: none; max-width: 100%; }
+  .hero-actions { justify-content: center; }
+  .hero-media { max-width: 100%; width: 100%; animation: none; }
+  .hero-video { max-width: 500px; margin: 0 auto; display: block; }
+  .stats-strip { grid-template-columns: repeat(2,1fr); }
+  .stats-strip .stat-item:nth-child(2) { border-right: none; }
+  .stats-strip .stat-item:nth-child(3) { border-top: 1px solid var(--border); }
+  .stats-strip .stat-item:nth-child(4) { border-top: 1px solid var(--border); border-right: none; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="hero-page">
+  <div class="hero-glow"></div>
+  <div class="hero-content">
+
+    <div class="hero-eyebrow">
+      <span class="dot"></span>
+      Maintaining Academic Integrity
+    </div>
+
+    <h1 class="hero-h1">
+      Empowering fair <br>
+      <em>online assessments</em>
+    </h1>
+
+    <p class="hero-sub">
+      Our primary goal is to ensure that remote examinations are credible, secure, and fair for every student. By continuously monitoring the environment without being intrusive, we provide a reliable alternative to physical invigilation, safeguarding the true value of education.
+    </p>
+
+    <div class="hero-actions">
+      <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-lg" id="hero-login">
+        Access Platform
+      </a>
+      <a href="{{ url_for('auth.register') }}" class="btn btn-outline btn-lg" id="hero-register">
+        Create Account
+      </a>
+    </div>
+
+  </div>
+
+  <div class="hero-media">
+    <video class="hero-video" src="{{ url_for('static', filename='video/esx.mp4') }}" autoplay muted loop playsinline preload="auto"></video>
+  </div>
+
+</div>
+
+<!-- Stats Strip -->
+<div style="border-top:1px solid var(--border); border-bottom:1px solid var(--border); background:var(--bg-surface);">
+  <div class="stats-strip">
+    <div class="stat-item">
+      <div class="stat-num">98%</div>
+      <div class="stat-desc">Detection Accuracy</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">15ms</div>
+      <div class="stat-desc">Inference Latency</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">5+</div>
+      <div class="stat-desc">Detection Modules</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">0</div>
+      <div class="stat-desc">Human Bias</div>
+    </div>
+  </div>
+</div>
+
+<!-- Features -->
+<section class="features-section">
+  <div class="section-eyebrow">Capabilities</div>
+  <h2 class="section-h">Everything you need for secure exams</h2>
+  <p class="section-sub">A complete proactive detection stack running continuously on every candidate session.</p>
+
+  <div class="grid-3">
+    <div class="feature-card">
+      <div class="feature-icon">📱</div>
+      <div class="feature-title">Object Recognition</div>
+      <div class="feature-desc">Detects unauthorized devices and materials instantly.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">👁️</div>
+      <div class="feature-title">Head Pose Tracking</div>
+      <div class="feature-desc">Maps face landmarks to detect off-screen attention in real-time.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">👥</div>
+      <div class="feature-title">Multi-Person Detection</div>
+      <div class="feature-desc">Flags additional individuals entering the examination zone automatically.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🗣️</div>
+      <div class="feature-title">Lip Movement Analysis</div>
+      <div class="feature-desc">Detects verbalization through visual lip-movement analysis without microphone access.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📊</div>
+      <div class="feature-title">Risk Scoring</div>
+      <div class="feature-desc">Dynamic 0–10 threat index weights and aggregates all violation events per session.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔒</div>
+      <div class="feature-title">Zero-Trust Integrity</div>
+      <div class="feature-desc">Every session is independently analyzed. All events logged with timestamps.</div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section">
+  <h2>Ready to deploy?</h2>
+  <p>Start securing your exams with enterprise AI proctoring today.</p>
+  <div style="display:flex;gap:12px;justify-content:center;">
+    <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-lg" id="cta-login">Sign In</a>
+    <a href="{{ url_for('auth.register') }}" class="btn btn-outline btn-lg" id="cta-register">Register</a>
+  </div>
+</section>
+{% endblock %}
+

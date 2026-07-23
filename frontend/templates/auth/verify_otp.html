@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Verify OTP — ExamSentinelX AI{% endblock %}
+
+{% block extra_css %}
+<style>
+.auth-page { min-height: calc(100vh - 60px); display: flex; align-items: center; justify-content: center; padding: 40px 20px; }
+.auth-card { width: 100%; max-width: 400px; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-xl); padding: 40px; box-shadow: var(--shadow-lg); }
+.auth-logo { text-align: center; margin-bottom: 32px; }
+.auth-logo h1 { font-size: 1.3rem; font-weight: 700; margin-bottom: 4px; }
+.auth-logo p { font-size: 0.85rem; color: var(--text-3); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <h1>Verify OTP</h1>
+      <p>Enter the 6-digit code sent to your email.</p>
+    </div>
+    <form method="POST" action="{{ url_for('password_bp.verify_otp') }}">
+      <input type="hidden" name="email" value="{{ email or '' }}">
+      <div class="form-group">
+        <label for="otp" class="form-label">6-Digit OTP</label>
+        <input type="text" id="otp" name="otp" class="form-control" placeholder="123456" maxlength="6" autocomplete="one-time-code" required style="text-align:center; font-size:1.5rem; letter-spacing:4px;">
+      </div>
+      <button type="submit" class="btn btn-primary w-100 btn-lg" style="margin-top:16px;">Verify Code</button>
+    </form>
+    <div style="text-align:center; margin-top:20px; font-size:0.875rem;">
+      <a href="{{ url_for('password_bp.forgot_password') }}" style="color:var(--text-3); text-decoration:none;">Didn't receive a code? Resend.</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,514 @@
+{% extends "base.html" %}
+{% block title %}{{ exam.title }} — ExamSentinelX AI{% endblock %}
+
+{% block nav_center %}
+<div style="display:flex; gap: 20px; align-items:center;">
+  <div class="ai-status-pill" style="display: flex; align-items: center; gap: 8px; background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.2); padding: 6px 14px; border-radius: 99px; font-size: 0.78rem; font-weight: 600; color: var(--success);">
+    <span class="live-dot"></span>
+    AI Proctoring Active
+  </div>
+  <button onclick="submitExam()" class="btn btn-outline-danger btn-sm" id="submit-exam-btn" style="display:flex; align-items:center; gap:6px;">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+    Exit Exam
+  </button>
+</div>
+<style>
+/* Hide the standard nav items in the top bar during exam */
+.navbar-nav { display: none !important; }
+</style>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Core layout: sidebar + questions scroll + AI panel fixed ── */
+.exam-layout {
+  display: grid;
+  grid-template-columns: var(--sidebar-w) 1fr 380px;
+  height: calc(100vh - var(--nav-h));
+  overflow: hidden; 
+  position: relative;
+}
+
+/* Sidebar */
+.exam-sidebar {
+  background: var(--bg-surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+/* Questions panel */
+.q-panel {
+  overflow-y: auto;
+  height: 100%;
+  padding: 32px 48px 120px;
+  background: var(--bg-base);
+  overscroll-behavior: contain;
+  scroll-behavior: smooth;
+}
+
+/* AI panel */
+.ai-panel {
+  height: 100%;
+  background: var(--bg-surface);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; 
+  position: relative;
+}
+
+/* ── Question cards ── */
+.q-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px 32px;
+  margin-bottom: 20px;
+  transition: border-color var(--t-fast);
+  scroll-margin-top: 24px;
+}
+.q-card.answered { border-color: rgba(16,185,129,0.3); }
+.q-card:focus-within { border-color: rgba(59,130,246,0.3); }
+
+.q-header-row {
+  display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;
+}
+.q-num {
+  font-size: 0.8rem; font-weight: 700; color: var(--danger);
+}
+.mark-review-btn {
+  font-size: 0.75rem; font-weight: 600; color: var(--warning);
+  background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.2);
+  padding: 4px 10px; border-radius: var(--radius-sm); cursor: pointer;
+  display: flex; align-items: center; gap: 6px; transition: all 0.2s;
+}
+.mark-review-btn.flagged {
+  background: var(--warning); color: #000;
+}
+
+.q-text { font-size: 1.05rem; font-weight: 500; color: var(--text-1); margin-bottom: 24px; line-height: 1.6; }
+
+/* ── Options ── */
+.options { display: flex; flex-direction: column; gap: 12px; }
+.opt-label {
+  display: flex; align-items: center; gap: 16px;
+  padding: 14px 18px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer; font-size: 0.95rem; color: var(--text-2);
+  transition: all var(--t-fast); font-weight: 500;
+  user-select: none;
+}
+.opt-label:hover { border-color: var(--border-strong); color: var(--text-1); }
+.opt-label input[type="radio"] { display: none; }
+.opt-circle {
+  width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--text-4);
+  display: flex; align-items: center; justify-content: center;
+}
+.opt-circle-inner { width: 10px; height: 10px; border-radius: 50%; background: transparent; transition: background 0.2s; }
+.opt-label:has(input:checked) {
+  background: rgba(16,185,129,0.06);
+  border-color: var(--success);
+  color: var(--text-1);
+}
+.opt-label:has(input:checked) .opt-circle { border-color: var(--success); }
+.opt-label:has(input:checked) .opt-circle-inner { background: var(--success); }
+.opt-letter { font-size: 0.9rem; font-weight: 700; color: var(--text-3); width: 20px; }
+
+.q-controls {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border);
+}
+
+.autosave-strip {
+  display: flex; align-items: center; gap: 8px; font-size: 0.75rem; color: var(--text-3); font-weight: 500;
+  margin-top: 16px;
+}
+
+/* ── Question Navigator (Bottom bar) ── */
+.qnav-bar {
+  position: absolute; bottom: 0; left: var(--sidebar-w); right: 380px;
+  background: rgba(17, 24, 39, 0.95); backdrop-filter: blur(10px);
+  border-top: 1px solid var(--border);
+  padding: 16px 32px; z-index: 100;
+  display: flex; align-items: center; gap: 24px;
+}
+.qnav-legend { display: flex; gap: 16px; font-size: 0.7rem; font-weight: 600; color: var(--text-3); }
+.legend-item { display: flex; align-items: center; gap: 6px; }
+.legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+.qnav-grid { display: flex; gap: 8px; flex: 1; overflow-x: auto; padding-bottom: 4px; }
+.qnav-grid::-webkit-scrollbar { height: 4px; }
+.qnav-btn {
+  width: 36px; height: 36px; border-radius: 8px; flex-shrink: 0;
+  border: 1px solid var(--border); background: var(--bg-surface);
+  color: var(--text-3); font-size: 0.8rem; font-weight: 600;
+  cursor: pointer; transition: all 0.2s;
+  display: flex; align-items: center; justify-content: center;
+}
+.qnav-btn:hover { background: var(--bg-elevated); color: var(--text-1); border-color: var(--border-strong); }
+.qnav-btn.answered { background: rgba(16,185,129,0.1); color: var(--success); border-color: rgba(16,185,129,0.3); }
+.qnav-btn.flagged { background: rgba(245,158,11,0.1); color: var(--warning); border-color: rgba(245,158,11,0.3); }
+.qnav-btn.current { border-color: var(--danger); color: var(--danger); box-shadow: 0 0 0 1px var(--danger); }
+.qnav-btn.not-answered { color: var(--info); border-color: rgba(59,130,246,0.3); }
+
+/* ── AI Panel sections ── */
+.ai-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 12px;
+  background: var(--bg-elevated); flex-shrink: 0;
+}
+.webcam-wrap {
+  padding: 20px; border-bottom: 1px solid var(--border); flex-shrink: 0; background: var(--bg-surface);
+}
+.webcam-frame {
+  position: relative; border-radius: var(--radius-md); overflow: hidden;
+  border: 1px solid rgba(16,185,129,0.3); background: #000; aspect-ratio: 4/3;
+  box-shadow: 0 0 20px rgba(16,185,129,0.05);
+}
+.rec-indicator { position: absolute; top: 12px; left: 12px; display: flex; align-items: center; gap: 6px; background: rgba(0,0,0,0.6); padding: 4px 8px; border-radius: 6px; z-index: 20; font-size: 0.65rem; font-weight: 700; color: #fff; }
+.rec-indicator::before { content: ''; display: inline-block; width: 6px; height: 6px; background: var(--danger); border-radius: 50%; }
+.live-badge { position: absolute; top: 12px; right: 12px; background: rgba(16,185,129,0.2); border: 1px solid rgba(16,185,129,0.5); color: var(--success); font-size: 0.65rem; font-weight: 700; padding: 2px 8px; border-radius: 4px; z-index: 20; }
+.cam-meta { position: absolute; bottom: 8px; right: 12px; font-size: 0.65rem; color: rgba(255,255,255,0.7); z-index: 20; font-family: var(--font-mono); }
+
+#webcam-feed, #annotated-feed {
+  width: 100%; height: 100%; object-fit: cover; display: block; position: absolute; inset: 0;
+}
+#annotated-feed { display: none; }
+.cam-overlay {
+  position: absolute; inset: 0; z-index: 10; background: rgba(9,9,11,0.92); backdrop-filter: blur(6px);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; padding: 16px;
+}
+
+/* AI Monitoring Status */
+.ai-stats { padding: 20px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.ai-stats-title { font-size: 0.85rem; font-weight: 600; color: var(--text-1); display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+
+.risk-strip { margin-bottom: 16px; }
+.risk-header { display: flex; justify-content: space-between; font-size: 0.75rem; font-weight: 600; margin-bottom: 8px; }
+.risk-bar { height: 6px; background: linear-gradient(90deg, var(--success), var(--warning), var(--danger)); border-radius: 99px; position: relative; }
+.risk-indicator { width: 12px; height: 12px; background: #fff; border: 2px solid #000; border-radius: 50%; position: absolute; top: -3px; transition: left 0.3s; transform: translateX(-50%); }
+
+.metrics-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.metric-box { display: flex; flex-direction: column; gap: 4px; }
+.metric-label { font-size: 0.65rem; color: var(--text-3); font-weight: 600; text-transform: uppercase; }
+.metric-val { font-size: 0.8rem; font-weight: 700; color: var(--text-1); }
+
+/* Events log */
+.events-hdr {
+  padding: 16px 20px 8px; font-size: 0.85rem; font-weight: 600; color: var(--text-1);
+  display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+}
+.events-list {
+  flex: 1; overflow-y: auto; padding: 8px 20px 20px; overscroll-behavior: contain;
+}
+.event-item {
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: 12px; margin-bottom: 8px;
+  display: flex; gap: 12px; align-items: flex-start;
+}
+.event-icon { font-size: 1.2rem; flex-shrink: 0; line-height: 1; }
+.event-content { flex: 1; }
+.event-title { font-size: 0.8rem; font-weight: 600; color: var(--text-1); margin-bottom: 2px; }
+.event-meta { font-size: 0.7rem; color: var(--text-3); font-family: var(--font-mono); }
+
+/* Alert overlay */
+.alert-overlay {
+  position: fixed; top: calc(var(--nav-h) + 16px); right: 400px;
+  background: rgba(239,68,68,0.1); backdrop-filter: blur(16px); border: 1px solid rgba(239,68,68,0.4);
+  color: var(--text-1); border-radius: var(--radius-lg); padding: 16px 20px; max-width: 380px; z-index: 1000;
+  box-shadow: 0 8px 32px rgba(239,68,68,0.25); display: none; pointer-events: none;
+}
+.alert-title-bar { font-size: 0.75rem; font-weight: 700; color: var(--danger); letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+.alert-msg { font-size: 0.9rem; font-weight: 500; line-height: 1.5; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="exam-layout">
+
+  <!-- ══ SIDEBAR ══════════════════════ -->
+  <aside class="exam-sidebar">
+    <div class="sidebar-section-label">Exam Navigation</div>
+    <a href="#" class="sidebar-link active"><span class="icon">📝</span> Question Palette</a>
+    <a href="#" class="sidebar-link"><span class="icon">ℹ️</span> Instructions</a>
+    <a href="#" class="sidebar-link"><span class="icon">🚩</span> Flagged Questions</a>
+    <a href="#" class="sidebar-link"><span class="icon">🛡</span> AI Monitoring</a>
+
+    <div class="sidebar-footer">
+      <div class="card" style="padding: 12px; background: rgba(16, 185, 129, 0.05); border-color: rgba(16, 185, 129, 0.2);">
+        <div style="font-size:0.75rem; color:var(--success); font-weight:600; display:flex; align-items:center; gap:6px; margin-bottom: 4px;">
+          <span class="live-dot"></span> System Status
+        </div>
+        <div style="font-size:0.85rem; color:var(--text-1); font-weight:500;">All Systems Operational</div>
+        <div style="font-size:0.65rem; color:var(--text-4); margin-top: 6px;">Powered by ExamSentinelX AI v2.0.0</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ══ QUESTIONS PANEL ══════════════════════ -->
+  <div class="q-panel" id="q-panel">
+
+    <!-- Exam Header Card -->
+    <div class="card exam-header-card" style="margin-bottom: 32px; display:flex; justify-content:space-between; align-items:center; border-top: 3px solid var(--accent-red);">
+      <div style="display:flex; gap:16px; align-items:center;">
+        <div style="width: 52px; height: 52px; border-radius: 12px; background: var(--danger-subtle); color: var(--danger); display:flex; align-items:center; justify-content:center; font-size: 1.6rem;">📄</div>
+        <div>
+          <h2 style="font-size: 1.3rem; font-weight: 700; margin-bottom: 6px;">{{ exam.title }}</h2>
+          <div style="font-size: 0.85rem; color: var(--text-3); font-weight: 500;">
+            Section 1 of 1 &bull; {{ questions|length }} Questions &bull; {{ exam.subject or 'Multiple Choice' }}
+          </div>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap: 20px;">
+        <div style="text-align:right;">
+          <div style="font-size: 0.75rem; color: var(--text-3); font-weight: 600; text-transform:uppercase;">Time Remaining</div>
+          <div class="timer-value" id="exam-timer" style="font-size: 1.5rem; color: var(--danger); font-weight: 700; font-family: var(--font-mono); line-height: 1.2;">{{ "%02d:%02d" % (time_remaining // 60, time_remaining % 60) }}</div>
+        </div>
+        <div class="circular-progress" style="background: conic-gradient(var(--danger) 100%, var(--border) 0); width: 56px; height: 56px; border-radius: 50%; display:flex; align-items:center; justify-content:center; position:relative;" id="time-ring">
+          <div style="background: var(--bg-surface); width: 48px; height: 48px; border-radius: 50%; display:flex; align-items:center; justify-content:center; font-size: 0.8rem; font-weight: 700;">
+            <span id="progress-percent">100%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Questions -->
+    {% for question in questions %}
+    <div class="q-card {% if answered.get(question.id) %}answered{% endif %}"
+         id="question-{{ loop.index0 }}" data-question-id="{{ question.id }}">
+      <div class="q-header-row">
+        <div class="q-num">Question {{ loop.index }} of {{ questions|length }}</div>
+        <button class="mark-review-btn" onclick="toggleFlag({{ loop.index0 }})" id="flag-btn-{{ loop.index0 }}">
+          <span class="icon">🔖</span> Mark for Review
+        </button>
+      </div>
+      
+      <div class="q-text">{{ question.question_text }}</div>
+      
+      <div class="options">
+        {% set q_idx = loop.index0 %}
+        {% for opt_key, opt_text in [('A', question.option_a), ('B', question.option_b), ('C', question.option_c), ('D', question.option_d)] %}
+        <label class="opt-label" id="opt-{{ question.id }}-{{ opt_key }}">
+          <input type="radio" name="q_{{ question.id }}" value="{{ opt_key }}"
+                 {% if answered.get(question.id) == opt_key %}checked{% endif %}
+                 onchange="saveAnswer({{ session.id }}, {{ question.id }}, '{{ opt_key }}', {{ q_idx }})">
+          <div class="opt-circle"><div class="opt-circle-inner"></div></div>
+          <div class="opt-letter">{{ opt_key }}.</div>
+          <div style="flex:1;">{{ opt_text }}</div>
+        </label>
+        {% endfor %}
+      </div>
+
+      <div class="q-controls">
+        <button class="btn btn-outline" onclick="scrollToQ({{ loop.index0 - 1 }})" {% if loop.first %}disabled{% endif %}>← Previous</button>
+        <button class="btn btn-ghost" onclick="clearAnswer({{ question.id }}, {{ q_idx }})">Clear Answer</button>
+        <button class="btn btn-primary-red" onclick="scrollToQ({{ loop.index0 + 1 }})" {% if loop.last %}disabled{% endif %}>Next →</button>
+      </div>
+
+      <div class="autosave-strip">
+        <span style="color:var(--success); font-size:1rem; line-height:1;">●</span>
+        <span style="color:var(--success);">Auto-save: Enabled</span>
+        <span style="margin-left: 16px;">⏱ Last saved: <span id="save-time-{{ q_idx }}">Just now</span></span>
+      </div>
+    </div>
+    {% endfor %}
+
+  </div>
+
+  <!-- ══ BOTTOM NAVIGATOR ══════════════════════ -->
+  <div class="qnav-bar">
+    <div style="font-weight: 700; font-size: 0.9rem;">Question Navigator</div>
+    <div class="qnav-legend">
+      <div class="legend-item"><div class="legend-dot" style="background:var(--success);"></div> Answered</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--info);"></div> Not Answered</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--warning);"></div> Flagged</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--danger);"></div> Current</div>
+    </div>
+    <div class="qnav-grid">
+      {% for q in questions %}
+      <button onclick="scrollToQ({{ loop.index0 }})"
+              id="qnav-{{ loop.index0 }}"
+              class="qnav-btn {% if q.id in answered %}answered{% else %}not-answered{% endif %}">{{ loop.index }}</button>
+      {% endfor %}
+    </div>
+    <button class="btn btn-outline-danger" onclick="submitExam()">Review All</button>
+  </div>
+
+  <!-- ══ AI MONITORING PANEL (fixed) ══════════ -->
+  <div class="ai-panel">
+
+    <div class="ai-header">
+      <div style="width: 32px; height: 32px; background: rgba(59,130,246,0.1); color: var(--info); border-radius: 8px; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">🛡</div>
+      <div style="font-weight: 600; font-size: 0.95rem;">AI Proctoring Feed</div>
+    </div>
+
+    <!-- Webcam -->
+    <div class="webcam-wrap">
+      <div class="webcam-frame">
+        <div class="rec-indicator">REC</div>
+        <div class="live-badge">● Live</div>
+        <div class="cam-meta">1080p · 30fps</div>
+        <video id="webcam-feed" autoplay muted playsinline></video>
+        <img id="annotated-feed" alt="AI Annotated">
+        <div class="cam-overlay" id="camera-overlay">
+          <div style="font-size:2rem;margin-bottom:4px;">📷</div>
+          <p style="font-size:0.75rem;color:var(--text-3);margin:0;">Camera required for proctoring</p>
+          <button onclick="startWebcam()" class="btn btn-outline btn-sm" id="enable-camera-btn" style="margin-top:8px;">Enable Camera</button>
+        </div>
+      </div>
+      <canvas id="capture-canvas" style="display:none;"></canvas>
+    </div>
+
+    <!-- AI Monitoring Status -->
+    <div class="ai-stats">
+      <div class="ai-stats-title">🛡 AI Monitoring Status</div>
+      <div style="display:flex; align-items:center; gap:6px; font-size:0.7rem; font-weight:600; color:var(--success); margin-bottom:12px;">
+        <span class="live-dot"></span> <span id="monitoring-status">Monitoring Active</span>
+      </div>
+      
+      <div class="risk-strip">
+        <div class="risk-header">
+          <span>Behavior Score</span>
+          <span id="risk-score" style="font-family:var(--font-mono); font-size:0.85rem;">0/10</span>
+        </div>
+        <div class="risk-bar" style="background: var(--border);">
+          <div id="risk-bar-fill" style="height: 100%; border-radius: 99px; background: var(--success); width: 0%;"></div>
+        </div>
+      </div>
+
+      <div class="metrics-grid">
+        <div class="metric-box">
+          <span class="metric-label">Face Detected</span>
+          <span class="metric-val" style="color:var(--success);" id="face-count">0 Face</span>
+        </div>
+        <div class="metric-box">
+          <span class="metric-label">Attention Level</span>
+          <span class="metric-val" style="color:var(--info);" id="head-direction">N/A</span>
+        </div>
+        <div class="metric-box">
+          <span class="metric-label">Environment</span>
+          <span class="metric-val" style="color:var(--success);" id="detected-objects">Clear</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Event log -->
+    <div class="events-hdr">
+      <span>Recent Alerts</span>
+      <a href="#" style="font-size: 0.75rem; font-weight:500; color:var(--text-3);">View All</a>
+    </div>
+    <div class="events-list" id="violations-list">
+      <div class="event-item" id="no-events-placeholder">
+        <div class="event-icon">✅</div>
+        <div class="event-content">
+          <div class="event-title">No alerts detected</div>
+          <div class="event-meta">All clear · Just now</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Alert overlay (fixed) -->
+<div class="alert-overlay" id="alert-overlay" role="alert" aria-live="assertive">
+  <div class="alert-title-bar">⚠ <span id="alert-title">VIOLATION DETECTED</span></div>
+  <div class="alert-msg" id="alert-message"></div>
+</div>
+
+<!-- Hidden session data -->
+<div id="session-data"
+     data-session-id="{{ session.id }}"
+     data-exam-id="{{ exam.id }}"
+     data-duration="{{ exam.duration_minutes }}"
+     data-time-remaining="{{ time_remaining }}"
+     style="display:none;"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/webcam.js') }}"></script>
+<script src="{{ url_for('static', filename='js/monitor.js') }}"></script>
+<script src="{{ url_for('static', filename='js/exam.js') }}"></script>
+<script>
+// Flag state management
+const flagged = new Set();
+function toggleFlag(idx) {
+  const btn = document.getElementById(`flag-btn-${idx}`);
+  const navBtn = document.getElementById(`qnav-${idx}`);
+  if (flagged.has(idx)) {
+    flagged.delete(idx);
+    btn.classList.remove('flagged');
+    navBtn.classList.remove('flagged');
+  } else {
+    flagged.add(idx);
+    btn.classList.add('flagged');
+    navBtn.classList.add('flagged');
+  }
+}
+
+function clearAnswer(qId, idx) {
+  const radios = document.getElementsByName(`q_${qId}`);
+  radios.forEach(r => r.checked = false);
+  const card = document.getElementById(`question-${idx}`);
+  card.classList.remove('answered');
+  const navBtn = document.getElementById(`qnav-${idx}`);
+  navBtn.classList.remove('answered');
+  navBtn.classList.add('not-answered');
+  // Trigger backend save with empty answer if supported, else just UI
+}
+
+// Scroll to question helper
+function scrollToQ(idx) {
+  const card = document.getElementById(`question-${idx}`);
+  if (card) {
+    // container is q-panel
+    const container = document.getElementById('q-panel');
+    container.scrollTo({ top: card.offsetTop - 80, behavior: 'smooth' });
+  }
+  // Highlight current in nav
+  document.querySelectorAll('.qnav-btn').forEach((b,i) => {
+    if(i === idx) {
+      b.classList.add('current');
+    } else {
+      b.classList.remove('current');
+    }
+  });
+}
+
+// Intercept saveAnswer to update UI time
+const _origSave = window.saveAnswer;
+if (typeof _origSave === 'function') {
+  window.saveAnswer = function(sid, qid, val, idx) {
+    _origSave(sid, qid, val, idx);
+    const navBtn = document.getElementById(`qnav-${idx}`);
+    navBtn.classList.remove('not-answered');
+    navBtn.classList.add('answered');
+    const timeEl = document.getElementById(`save-time-${idx}`);
+    if (timeEl) {
+      const d = new Date();
+      timeEl.textContent = d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+    }
+  };
+}
+
+// Update timer ring
+setInterval(() => {
+  const ds = document.getElementById('session-data');
+  if(!ds) return;
+  const rem = parseInt(ds.getAttribute('data-time-remaining') || '0', 10);
+  const total = parseInt(ds.getAttribute('data-duration') || '60', 10) * 60;
+  if(total > 0) {
+    const pct = Math.max(0, Math.min(100, Math.round((rem / total) * 100)));
+    document.getElementById('progress-percent').textContent = pct + '%';
+    document.getElementById('time-ring').style.background = `conic-gradient(var(--danger) ${pct}%, var(--border) 0)`;
+  }
+}, 1000);
+
+// Initialize first question as current
+scrollToQ(0);
+</script>
+{% endblock %}

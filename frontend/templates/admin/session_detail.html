@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+{% block title %}Session #{{ session.id }} — ExamSentinelX AI{% endblock %}
+
+{% block extra_css %}
+<style>
+.admin-layout { 
+  display: grid; 
+  grid-template-columns: 280px 1fr; 
+  min-height: calc(100vh - 72px);
+  background: radial-gradient(circle at 100% 0%, rgba(0, 245, 255, 0.03) 0%, transparent 50%);
+}
+
+.admin-sidebar { 
+  background: rgba(10, 14, 20, 0.5); 
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-right: 1px solid var(--border-glass); 
+  padding: 32px 0; 
+}
+
+.admin-sidebar a { 
+  display: flex; align-items: center; gap: 12px; 
+  padding: 14px 24px; 
+  color: var(--text-secondary); 
+  font-size: 0.95rem; 
+  font-weight: 500;
+  transition: all var(--transition-fast); 
+  border-left: 3px solid transparent; 
+  text-decoration: none; 
+}
+
+.admin-sidebar a:hover, .admin-sidebar a.active { 
+  color: var(--text-primary); 
+  background: rgba(0, 245, 255, 0.05); 
+  border-left-color: var(--accent-primary); 
+  box-shadow: inset 4px 0 12px rgba(0, 245, 255, 0.05);
+}
+
+.admin-content { 
+  padding: 40px 48px; 
+  overflow-y: auto; 
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-layout">
+  <!-- Sidebar -->
+  <div class="admin-sidebar">
+    <div style="padding:0 24px 24px; border-bottom:1px solid var(--border-glass); margin-bottom:16px;">
+      <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:8px; font-weight:600;">System Admin</div>
+      <div style="font-family:var(--font-display); font-weight:700; font-size:1.1rem; color:var(--text-primary);">{{ current_user.full_name }}</div>
+    </div>
+    <a href="{{ url_for('admin.dashboard') }}" class="active" id="sidebar-dashboard">
+      <span style="font-size:1.2rem; opacity:0.8;">📊</span> Control Center
+    </a>
+    <a href="{{ url_for('admin.exams') }}" id="sidebar-exams">
+      <span style="font-size:1.2rem; opacity:0.8;">📝</span> Assessment Config
+    </a>
+    <a href="{{ url_for('admin.users') }}" id="sidebar-users">
+      <span style="font-size:1.2rem; opacity:0.8;">👥</span> Personnel Access
+    </a>
+    <a href="{{ url_for('admin.students') }}" id="sidebar-students">
+      <span style="font-size:1.2rem; opacity:0.8;">🎓</span> Candidate Profiles
+    </a>
+    <a href="{{ url_for('admin.create_exam') }}" id="sidebar-create-exam">
+      <span style="font-size:1.2rem; opacity:0.8;">➕</span> Deploy Assessment
+    </a>
+  </div>
+
+  <!-- Main Content -->
+  <div class="admin-content">
+    <!-- Back nav -->
+    <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline btn-sm" style="margin-bottom:24px; display:inline-block;">← Return to Command Center</a>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:40px;">
+      <div>
+        <h1 style="font-size:2.2rem; font-weight:700; letter-spacing:-0.03em;">Session Telemetry #{{ session.id }}</h1>
+        <p class="text-secondary" style="font-size:1.05rem; margin-top:4px;">{{ session.student.full_name }} — {{ session.exam.title }}</p>
+      </div>
+      <a href="{{ url_for('admin.generate_report', session_id=session.id) }}"
+         class="btn btn-primary" id="download-report-btn">
+        📄 Export PDF Dossier
+      </a>
+    </div>
+
+    <div class="grid-2" style="margin-bottom:40px;">
+      <div class="card-glass">
+        <div class="card-header" style="border-bottom: 1px solid var(--border-glass); padding-bottom: 16px; margin-bottom: 16px;">
+          <h3 class="card-title" style="font-size: 1.2rem; margin:0;">📋 Session Matrix</h3>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          {% for label, value in [
+            ('Candidate', session.student.full_name),
+            ('Protocol', session.exam.title),
+            ('Init Time', session.started_at.strftime('%Y-%m-%d %H:%M UTC')),
+            ('Halt Time', session.ended_at.strftime('%Y-%m-%d %H:%M UTC') if session.ended_at else 'ACTIVE NODE'),
+            ('T-Elapsed', session.duration_display),
+            ('Scoring', (session.score|string + ' / ' + session.exam.total_marks|string) if session.score is not none else 'AWAITING CALC'),
+            ('Origin IP', session.ip_address or 'UNVERIFIED'),
+          ] %}
+          <div style="display:flex; justify-content:space-between; font-size:0.95rem; font-family:var(--font-mono); padding:12px 0; border-bottom:1px dashed rgba(255,255,255,0.05);">
+            <span class="text-secondary">{{ label }}</span>
+            <span style="font-weight:600; color:var(--text-primary);">{{ value }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="card-glass">
+        <div class="card-header" style="border-bottom: 1px solid var(--border-glass); padding-bottom: 16px; margin-bottom: 16px;">
+          <h3 class="card-title" style="font-size: 1.2rem; margin:0;">⚠️ Threat Index Assessment</h3>
+        </div>
+        <div style="text-align:center; padding:32px;">
+          <div style="font-family:var(--font-mono); font-size:4.5rem; font-weight:700; line-height:1; color:{{ 'var(--accent-danger)' if session.risk_score >= 7 else 'var(--warning)' if session.risk_score >= 4 else 'var(--accent-emerald)' }}; text-shadow: 0 0 20px currentColor;">
+            {{ session.risk_score|round(1) }}
+          </div>
+          <div style="color:var(--text-muted); font-family:var(--font-mono); margin-bottom:24px; margin-top:8px;">MAX THRESHOLD: 10.0</div>
+          
+          <div style="height:12px; background:rgba(255,255,255,0.05); border-radius:var(--radius-full); overflow:hidden;">
+            <div style="height:100%; width:{{ (session.risk_score/10*100)|round }}%; transition: width 1s ease-out; background:{{ 'var(--accent-danger)' if session.risk_score >= 7 else 'var(--warning)' if session.risk_score >= 4 else 'var(--accent-emerald)' }}; box-shadow: 0 0 10px currentColor;"></div>
+          </div>
+          
+          <div style="margin-top:24px; display:flex; justify-content:center; gap:16px;">
+            <span class="badge {{ 'badge-danger' if session.status == 'flagged' else 'badge-success' if session.status == 'completed' else 'badge-warning' }}" style="font-size: 0.9rem; padding: 6px 16px; font-family:var(--font-mono);">
+              STATUS: {{ session.status.upper() }}
+            </span>
+          </div>
+          <div style="margin-top:24px; font-size:1.4rem; font-family:var(--font-mono); font-weight:700; color:var(--warning);">
+            {{ session.total_violations }} ANOMALIES LOGGED
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Violations Table -->
+    <div class="card-glass" style="padding:0; overflow:hidden;">
+      <div class="card-header" style="border-bottom: 1px solid var(--border-glass); padding: 24px 32px; background:rgba(0,0,0,0.2);">
+        <h3 class="card-title" style="font-size: 1.2rem; margin:0;">🔴 Anomaly Timeline ({{ violations|length }} Events)</h3>
+      </div>
+      
+      {% if violations %}
+      <div class="table-container" style="border:none; border-radius:0;">
+        <table>
+          <thead>
+            <tr>
+              <th style="padding-left: 32px;">SEQ</th>
+              <th>TIMESTAMP</th>
+              <th>CLASS</th>
+              <th>CONFIDENCE</th>
+              <th>SEVERITY</th>
+              <th style="padding-right: 32px;">EVIDENCE</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for v in violations %}
+            <tr>
+              <td style="padding-left: 32px; font-family:var(--font-mono); color:var(--text-muted);">{{ loop.index }}</td>
+              <td style="font-family:var(--font-mono);">{{ v.timestamp.strftime('%H:%M:%S') }}</td>
+              <td style="font-weight:600; color:var(--text-primary);">{{ v.violation_display }}</td>
+              <td style="font-family:var(--font-mono);">{{ (v.confidence * 100)|round|int if v.confidence else 'N/A' }}%</td>
+              <td>
+                <span class="badge {{ 'badge-danger' if v.severity == 'High' else 'badge-warning' if v.severity == 'Medium' else 'badge-muted' }}">{{ v.severity }}</span>
+              </td>
+              <td style="padding-right: 32px;">
+                {% if v.screenshot_path %}
+                <span class="badge badge-info" style="font-family:var(--font-mono);">📸 CAPTURED</span>
+                {% else %}
+                <span style="color:var(--text-muted);">--</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div style="text-align:center; padding:60px; color:var(--text-muted); font-family:var(--font-mono);">
+        <div style="font-size:3rem; margin-bottom:16px; opacity:0.5;">✅</div>
+        NO ANOMALIES DETECTED DURING THIS SESSION
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
