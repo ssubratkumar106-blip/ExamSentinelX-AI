@@ -202,11 +202,14 @@ def submit_exam(session_id):
 
     # Calculate score
     correct = 0
-    total_marks = 0
     for answer in session.answers:
         if answer.is_correct:
             correct += answer.question.marks
-        total_marks += answer.question.marks
+
+    # Total marks should be the exam's total possible marks, not just the answered ones
+    total_marks = session.exam.total_marks
+    if not total_marks:  # Fallback if total_marks is 0 or None
+        total_marks = sum(q.marks for q in session.exam.questions)
 
     session.score = correct
     session.ended_at = datetime.utcnow()

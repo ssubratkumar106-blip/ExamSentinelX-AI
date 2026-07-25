@@ -157,10 +157,11 @@ class ObjectDetector:
             return result
 
         try:
-            # Run YOLOv8 inference
-            # verbose=False suppresses per-frame console output
+            # Run YOLOv8 inference with a low base confidence to catch everything,
+            # then filter manually.
+            base_conf = min(0.15, self.confidence_threshold)
             predictions = self.model(frame,
-                                     conf=self.confidence_threshold,
+                                     conf=base_conf,
                                      classes=list(self.TARGET_CLASSES.keys()),
                                      verbose=False)
 
@@ -173,6 +174,16 @@ class ObjectDetector:
                     class_name = self.model.names[class_id]
                     confidence = float(box.conf[0])
                     x1, y1, x2, y2 = map(int, box.xyxy[0])
+
+                    # Filter based on specific thresholds
+                    if class_id == self.PERSON_CLASS_ID:
+                        # Allow lower confidence for persons to be evaluated by the false-positive guard later
+                        if confidence < 0.15:
+                            continue
+                    else:
+                        # Use the requested confidence threshold for other objects
+                        if confidence < self.confidence_threshold:
+                            continue
 
                     obj = DetectedObject(
                         class_id=class_id,
@@ -201,13 +212,12 @@ class ObjectDetector:
 
             # ── Person false-positive guard ────────────────────────────────────
             # Filter: only count persons that:
-            #   1. Have confidence >= 0.55 (stricter than phone/book)
-            #   2. Occupy at least 3% of the frame area (not a tiny BG figure)
+            #   1. Occupy at least 0.2% of the frame area (not a tiny BG figure)
             # This eliminates posters, TV screens, and distant bystanders.
             h_f, w_f = frame.shape[:2]
             frame_area = w_f * h_f
-            MIN_PERSON_AREA = frame_area * 0.005     # 0.5% — catches background/partially obscured people
-            MIN_PERSON_CONF = 0.25                   # Lower conf to catch partial views
+            MIN_PERSON_AREA = frame_area * 0.002     # 0.2% — catches background/partially obscured people
+            MIN_PERSON_CONF = 0.20                   # Lower conf to catch partial views
 
             validated_persons = [
                 o for o in result.detected_objects

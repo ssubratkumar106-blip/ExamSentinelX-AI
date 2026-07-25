@@ -218,6 +218,15 @@ class ExamSession(db.Model):
     answers = db.relationship('StudentAnswer', back_populates='session',
                                lazy='dynamic', cascade='all, delete-orphan')
 
+    def __init__(self, **kwargs):
+        super(ExamSession, self).__init__(**kwargs)
+        if getattr(self, 'trust_score', None) is None:
+            self.trust_score = 100.0
+        if getattr(self, 'risk_score', None) is None:
+            self.risk_score = 0.0
+        if getattr(self, 'total_violations', None) is None:
+            self.total_violations = 0
+
     @property
     def duration_seconds(self):
         """How long the session lasted in seconds."""

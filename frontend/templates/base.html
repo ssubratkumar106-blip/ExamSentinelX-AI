@@ -73,34 +73,27 @@
 
   <!-- ── Top Navigation Bar ──────────────────────────────────── -->
   <nav class="navbar" id="main-navbar">
-    <div style="display: flex; align-items: center;">
-      <button class="hamburger-btn" id="sidebar-toggle" aria-label="Toggle Sidebar">
+    <div style="display: flex; align-items: center; gap: 24px;">
+      <a href="{{ url_for('index') }}" class="navbar-brand" id="nav-brand" style="margin-left: 0; padding-left: 0;">
+        <div class="brand-mark">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <div style="display: flex; flex-direction: column;">
+          <span>ExamSentinel<strong>X</strong> AI</span>
+          <span class="brand-tagline">Secure. Smart. Scholarly.</span>
+        </div>
+      </a>
+      <button class="hamburger-btn" id="sidebar-toggle" aria-label="Toggle Sidebar" style="margin-left: 0;">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <line x1="3" y1="12" x2="21" y2="12"></line>
           <line x1="3" y1="6" x2="21" y2="6"></line>
           <line x1="3" y1="18" x2="21" y2="18"></line>
         </svg>
       </button>
-      <a href="{{ url_for('index') }}" class="navbar-brand" id="nav-brand">
-      <div class="brand-mark">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-      </div>
-      <div style="display: flex; flex-direction: column;">
-        <span>ExamSentinel<strong>X</strong> AI</span>
-        <span class="brand-tagline">Secure. Smart. Scholarly.</span>
-      </div>
-    </a>
+    </div>
 
     {% if current_user.is_authenticated %}
-    <ul class="navbar-nav" style="display:flex; align-items:center; gap:4px; list-style:none;">
-      {% if current_user.is_admin %}
-        <li><a href="{{ url_for('admin.dashboard') }}" class="nav-link {% if request.endpoint and 'admin' in request.endpoint %}active{% endif %}" id="nav-admin">Dashboard</a></li>
-        <li><a href="{{ url_for('admin.students') }}" class="nav-link {% if request.endpoint == 'admin.students' %}active{% endif %}" id="nav-students">Students</a></li>
-      {% else %}
-        <li><a href="{{ url_for('exam.student_dashboard') }}" class="nav-link {% if request.endpoint and 'exam' in request.endpoint %}active{% endif %}" id="nav-dashboard">Dashboard</a></li>
-        <li><a href="{{ url_for('exam.exam_history') }}" class="nav-link {% if request.endpoint == 'exam.exam_history' %}active{% endif %}" id="nav-history">History</a></li>
-      {% endif %}
-    </ul>
+    <!-- Removed redundant top navbar links (Dashboard/History) -->
 
     <div style="flex: 1; display: flex; justify-content: center; align-items: center;">
       {% block nav_center %}{% endblock %}
@@ -147,22 +140,6 @@
     {% endif %}
   {% endwith %}
 
-  <!-- ── Sidebar ─────────────────────────────────────────────── -->
-  <aside class="sidebar" id="sidebar">
-    {% if current_user.is_authenticated %}
-      {% if current_user.is_admin %}
-        <a href="{{ url_for('admin.dashboard') }}" class="sidebar-link {% if request.endpoint and 'admin' in request.endpoint %}active{% endif %}">Dashboard</a>
-        <a href="{{ url_for('admin.students') }}" class="sidebar-link {% if request.endpoint == 'admin.students' %}active{% endif %}">Students</a>
-      {% else %}
-        <a href="{{ url_for('exam.student_dashboard') }}" class="sidebar-link {% if request.endpoint and 'exam' in request.endpoint %}active{% endif %}">Dashboard</a>
-        <a href="{{ url_for('exam.exam_history') }}" class="sidebar-link {% if request.endpoint == 'exam.exam_history' %}active{% endif %}">History</a>
-      {% endif %}
-    {% else %}
-      <a href="{{ url_for('auth.login') }}" class="sidebar-link">Sign in</a>
-      <a href="{{ url_for('auth.register') }}" class="sidebar-link">Get Started</a>
-    {% endif %}
-  </aside>
-
   <!-- ── Main Content ────────────────────────────────────────── -->
   <main class="animate-in">
     {% block content %}{% endblock %}
@@ -184,14 +161,9 @@
       }
 
       const sidebarToggle = document.getElementById('sidebar-toggle');
-      const sidebar = document.getElementById('sidebar');
-      const mainContent = document.querySelector('main');
-      
-      if (sidebarToggle && sidebar && mainContent) {
+      if (sidebarToggle) {
         sidebarToggle.addEventListener('click', () => {
-          sidebar.classList.toggle('open');
-          // Optional: slide main content if you want it to push, otherwise just overlay
-          // mainContent.classList.toggle('sidebar-open');
+          document.body.classList.toggle('sidebar-collapsed');
         });
       }
     });

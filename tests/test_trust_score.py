@@ -36,8 +36,8 @@ def test_risk_score_calculation():
     session = ExamSession()
     
     # Add some mock violations
-    v1 = ViolationLog(violation_type='phone_detected', confidence=1.0)
-    v2 = ViolationLog(violation_type='tab_switch', confidence=1.0)
+    v1 = ViolationLog(session_id=1, violation_type='phone_detected', confidence=1.0)
+    v2 = ViolationLog(session_id=1, violation_type='tab_switch', confidence=1.0)
     
     session.violations = [v1, v2]
     

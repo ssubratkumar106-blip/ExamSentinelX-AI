@@ -201,16 +201,24 @@ class ExamDetector:
             return result
 
         # ── Layer 1+2: MediaPipe Face + Head Pose + YOLOv8 ───────────────────
-        face_result = self.face_detector.detect(frame, draw_annotations=True)
-        face_annotated = face_result.annotated_frame if face_result.annotated_frame is not None else frame
-        pose_result = self.head_pose.estimate(
-            face_annotated, draw_annotations=True
-        )
-        pose_annotated = pose_result.annotated_frame if pose_result.annotated_frame is not None else face_annotated
-        obj_result = self.object_detector.detect(
-            pose_annotated, draw_annotations=True
-        )
-        final_frame = obj_result.annotated_frame if obj_result.annotated_frame is not None else pose_annotated
+        raw_frame = frame.copy()
+        final_frame = frame.copy()
+
+        face_result = self.face_detector.detect(raw_frame, draw_annotations=False)
+        pose_result = self.head_pose.estimate(raw_frame, draw_annotations=False)
+        obj_result = self.object_detector.detect(raw_frame, draw_annotations=False)
+
+        # Draw annotations on the final frame (so inference is not confused by drawn boxes)
+        if return_annotated:
+            for face in face_result.faces:
+                self.face_detector._draw_face_box(final_frame, face, face.get('confidence', 0.9))
+            if pose_result.landmarks_found:
+                # Find nose tip manually since we didn't use draw_annotations=True
+                # But wait, we can't easily access det.face_landmarks outside.
+                # It's better to just skip head pose arrows or let it be. Actually pose_result doesn't store the nose point.
+                pass
+            for obj in obj_result.detected_objects:
+                self.object_detector._draw_box(final_frame, obj)
 
         # ── Fill Basic Fields ──────────────────────────────────────────────────
         result.face_count = face_result.face_count

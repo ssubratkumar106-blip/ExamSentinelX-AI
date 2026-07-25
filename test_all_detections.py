@@ -259,9 +259,14 @@ def main():
             with _lock:
                 frame = _latest_frame[0]
                 if frame is None or _yolo_running[0]:
-                    time.sleep(0.01)
-                    continue
-                _yolo_running[0] = True
+                    should_skip = True
+                else:
+                    should_skip = False
+                    _yolo_running[0] = True
+
+            if should_skip:
+                time.sleep(0.01)
+                continue
 
             try:
                 result = obj_detector.detect(frame, draw_annotations=True)
@@ -312,21 +317,26 @@ def main():
 
         frame_count += 1
 
+        raw_frame = frame.copy()
+        display_frame = frame.copy()
+
         # ── 1. Face Detection ───────────────────────────────────────────────
-        face_result = face_detector.detect(frame, draw_annotations=True)
-        face_frame = face_result.annotated_frame if face_result.annotated_frame is not None else frame
+        face_result = face_detector.detect(raw_frame, draw_annotations=False)
 
         # ── 2. Head Pose ────────────────────────────────────────────────────
-        pose_result = head_pose.estimate(face_frame, draw_annotations=True)
-        pose_frame = pose_result.annotated_frame if pose_result.annotated_frame is not None else face_frame
+        pose_result = head_pose.estimate(raw_frame, draw_annotations=False)
 
         # ── 3. YOLO Objects (threaded — non-blocking) ───────────────────────
         with _lock:
-            _latest_frame[0] = frame.copy()
+            _latest_frame[0] = raw_frame.copy()
             obj_result = _obj_result[0]
 
-        # Use YOLO-annotated frame if available
-        display_frame = pose_frame
+        # Draw annotations on display_frame
+        for face in (face_result.faces if face_result else []):
+            face_detector._draw_face_box(display_frame, face, face.get('confidence', 0.9))
+        if obj_result:
+            for obj in obj_result.detected_objects:
+                obj_detector._draw_box(display_frame, obj)
 
         # ── 4. Talking Detection ────────────────────────────────────────────
         try:
