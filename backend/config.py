@@ -44,10 +44,21 @@ class Config:
     # ── Database ───────────────────────────────────────────────────────────────
     # Use absolute path so SQLite works regardless of CWD
     _db_path = os.path.join(BASE_DIR, 'database', 'examsentinelx.db')
-    SQLALCHEMY_DATABASE_URI = os.getenv(
-        'DATABASE_URL',
-        f'sqlite:///{_db_path}'
-    )
+    
+    _db_url = os.getenv('DATABASE_URL')
+    if _db_url:
+        # SQLAlchemy 1.4+ requires postgresql:// instead of postgres://
+        if _db_url.startswith("postgres://"):
+            _db_url = _db_url.replace("postgres://", "postgresql://", 1)
+        
+        # Supabase and many cloud providers require SSL
+        if "supabase" in _db_url or "pooler" in _db_url or "render" in _db_url:
+            if "?" not in _db_url:
+                _db_url += "?sslmode=require"
+            elif "sslmode=" not in _db_url:
+                _db_url += "&sslmode=require"
+                
+    SQLALCHEMY_DATABASE_URI = _db_url or f'sqlite:///{_db_path}'
     SQLALCHEMY_TRACK_MODIFICATIONS = False  # Disable to save memory
 
     # ── File Storage ───────────────────────────────────────────────────────────

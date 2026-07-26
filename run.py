@@ -28,11 +28,17 @@ app = create_app()
 
 # ── Initialize Database ────────────────────────────────────────────────────────
 with app.app_context():
-    db.create_all()
-    
-    # Seed admin user and sample data if DB is empty
-    from database.seed import seed_database
-    seed_database()
+    try:
+        db.create_all()
+        
+        # Seed admin user and sample data if DB is empty
+        from database.seed import seed_database
+        seed_database()
+        print("Database initialized successfully.")
+    except Exception as e:
+        print(f"⚠️ Warning: Could not initialize database during startup.")
+        print(f"⚠️ Error details: {e}")
+        print("⚠️ The application will continue to boot, but database features may fail until the connection is restored.")
 
 # ── Start Server ───────────────────────────────────────────────────────────────
 if __name__ == '__main__':
