@@ -10,6 +10,8 @@ ENV PORT=5000
 # Install system dependencies (required for AI models and WebSockets)
 RUN apt-get update && apt-get install -y \
     build-essential \
+    libgl1 \
+    libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
@@ -25,8 +27,8 @@ COPY . .
 # Create directories for logs and uploads
 RUN mkdir -p captures/evidence reports/generated logs database
 
-# Expose port 5000
+# Expose port (Render sets this dynamically, but EXPOSE is good for docs)
 EXPOSE 5000
 
 # Start the application with Gunicorn and Eventlet worker for SocketIO
-CMD ["gunicorn", "--worker-class", "eventlet", "-w", "1", "--bind", "0.0.0.0:5000", "run:app"]
+CMD gunicorn --worker-class eventlet -w 1 --bind 0.0.0.0:$PORT run:app
