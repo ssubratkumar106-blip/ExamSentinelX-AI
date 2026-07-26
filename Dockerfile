@@ -31,4 +31,4 @@ RUN mkdir -p captures/evidence reports/generated logs database
 EXPOSE 5000
 
 # Start the application with Gunicorn and Eventlet worker for SocketIO
-CMD gunicorn --worker-class eventlet -w 1 --bind 0.0.0.0:$PORT run:app
+CMD gunicorn --worker-class gthread --threads 4 --timeout 120 -w 1 --bind 0.0.0.0:$PORT run:app

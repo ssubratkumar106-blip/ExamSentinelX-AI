@@ -20,6 +20,13 @@ from dotenv import load_dotenv
 # This ensures all config values are available during app creation
 load_dotenv()
 
+# Limit CPU threads for heavy AI libraries to prevent OOM on Render Free Tier
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
+
 from backend.app import create_app
 from backend.extensions import socketio, db
 
