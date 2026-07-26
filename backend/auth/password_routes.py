@@ -72,13 +72,13 @@ def reset_password():
 
     if not email or not token:
         flash('Invalid reset link.', 'error')
-        return redirect(url_for('auth.login'))
+        return redirect(url_for('auth_bp.login'))
 
     user = User.query.filter_by(email=email, otp_code=token).first()
     
     if not user:
         flash('Invalid or expired reset token.', 'error')
-        return redirect(url_for('auth.login'))
+        return redirect(url_for('auth_bp.login'))
 
     if request.method == 'POST':
         new_password = request.form.get('password')
@@ -96,6 +96,6 @@ def reset_password():
             # We'll leave auth_provider as is, they can use both.
             db.session.commit()
             flash('Your password has been successfully reset. Please log in.', 'success')
-            return redirect(url_for('auth.login'))
+            return redirect(url_for('auth_bp.login'))
 
     return render_template('auth/reset_password.html', email=email, token=token)
