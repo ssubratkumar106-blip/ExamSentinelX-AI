@@ -237,7 +237,8 @@ body.sidebar-collapsed .admin-sidebar {
   display: none;
 }
 body.sidebar-collapsed .app-layout,
-body.sidebar-collapsed .admin-wrap {
+body.sidebar-collapsed .admin-wrap,
+body.sidebar-collapsed .admin-layout {
   grid-template-columns: 1fr;
 }
 
@@ -630,7 +631,7 @@ textarea.form-control { resize: vertical; min-height: 96px; }
 
 /* ─── Responsive sidebar collapse ───────────────────────────── */
 @media (max-width: 900px) {
-  .admin-wrap { grid-template-columns: 1fr; }
+  .admin-wrap, .admin-layout { grid-template-columns: 1fr; }
   .admin-sidebar { display: none; }
   .app-layout { grid-template-columns: 1fr; }
   .app-sidebar { display: none; }

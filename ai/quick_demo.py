@@ -61,8 +61,8 @@ EXAM_CLASSES = {
 }
 
 # Alert thresholds
-CONFIDENCE_THRESHOLD = 0.40   # Min confidence to show detection
-ALERT_THRESHOLD      = 0.50   # Min confidence to log as violation
+CONFIDENCE_THRESHOLD = 0.30   # Min confidence to show detection
+ALERT_THRESHOLD      = 0.45   # Min confidence to log as violation
 
 
 def load_yolo():
@@ -104,6 +104,20 @@ def analyze_detections(results, use_custom=False):
             continue
         
         boxes = result.boxes
+        
+        # Identify the primary person (largest bounding box) to ignore them
+        primary_person_idx = -1
+        max_area = 0
+        if not use_custom:
+            for i in range(len(boxes)):
+                cls_id = int(boxes.cls[i].item())
+                if cls_id == 0:
+                    xyxy = boxes.xyxy[i].tolist()
+                    area = (xyxy[2] - xyxy[0]) * (xyxy[3] - xyxy[1])
+                    if area > max_area:
+                        max_area = area
+                        primary_person_idx = i
+                        
         for i in range(len(boxes)):
             cls_id = int(boxes.cls[i].item())
             conf   = float(boxes.conf[i].item())
@@ -130,6 +144,20 @@ def analyze_detections(results, use_custom=False):
                 if cls_id not in EXAM_CLASSES:
                     continue
                 if conf < CONFIDENCE_THRESHOLD:
+                    continue
+                    
+                # Ignore the primary person (the candidate taking the exam)
+                if cls_id == 0 and i == primary_person_idx:
+                    # Draw a green box for the primary candidate (not a violation)
+                    violations.append({
+                        "class_id":   cls_id,
+                        "class_name": "person",
+                        "alert":      "CANDIDATE",
+                        "confidence": conf,
+                        "bbox":       xyxy,
+                        "color":      (0, 255, 0),
+                        "is_violation": False,
+                    })
                     continue
                 
                 cls_name, color, alert = EXAM_CLASSES[cls_id]
@@ -232,9 +260,9 @@ def run_webcam(model, use_custom=False):
                 _inf_running[0] = True
 
             try:
-                # imgsz=320: 4x faster than 640 on CPU, still good detection
+                # Use imgsz=640 (default) for better accuracy on small objects like phones
                 results = model(frame, verbose=False,
-                                conf=CONFIDENCE_THRESHOLD, imgsz=320)
+                                conf=CONFIDENCE_THRESHOLD, imgsz=640)
                 viols = analyze_detections(results, use_custom)
             except Exception:
                 viols = []
@@ -249,7 +277,7 @@ def run_webcam(model, use_custom=False):
     inf_thread.start()
 
     print("[OK] Webcam started. Monitoring exam environment...")
-    print("     YOLO running in background thread (imgsz=320 for CPU speed)\n")
+    print("     YOLO running in background thread (imgsz=640)\n")
 
     fps_timer   = time.time()
     frame_count = 0

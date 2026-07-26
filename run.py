@@ -40,10 +40,14 @@ if __name__ == '__main__':
     port = int(os.getenv('PORT', 5000))
     debug = os.getenv('FLASK_DEBUG', 'True').lower() == 'true'
     
+    db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+    db_type = 'Supabase / PostgreSQL (Cloud)' if db_uri.startswith('postgres') else 'SQLite (Local)'
+    
     print("=" * 60)
     print("  ExamSentinelX AI -- Starting Server")
     print("=" * 60)
     print(f"  URL:   http://localhost:{port}")
+    print(f"  DB:    {db_type}")
     print(f"  Debug: {debug}")
     print(f"  Admin: http://localhost:{port}/admin/dashboard")
     print("=" * 60)

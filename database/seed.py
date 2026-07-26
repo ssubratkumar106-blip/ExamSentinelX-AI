@@ -221,5 +221,5 @@ def seed_database():
     # ── Commit Everything ──────────────────────────────────────────────────────
     db.session.commit()
     print("  [OK] Database seeded successfully!")
-    print("     [Admin]   username: admin       / password: Admin@123456")
+    print(f"     [Admin]   username: {os.getenv('ADMIN_USERNAME', 'admin')}       / password: {os.getenv('ADMIN_PASSWORD', 'Admin@123456')}")
     print("     [Student] username: john_doe    / password: Student@123")
