@@ -8,13 +8,14 @@ Flask-Login==0.6.3
 Flask-CORS==4.0.1
 flask-socketio==5.3.6
 Werkzeug==3.0.3
+gunicorn==22.0.0
 
 # ── Database ───────────────────────────────────────────────────────────────────
 SQLAlchemy==2.0.31
 psycopg2-binary==2.9.9
 
 # ── AI / Computer Vision ──────────────────────────────────────────────────────
-opencv-python==4.10.0.84
+opencv-python-headless==4.10.0.84
 mediapipe==0.10.14
 ultralytics==8.2.87         # YOLOv8 — Ultralytics official package
 numpy==1.26.4
