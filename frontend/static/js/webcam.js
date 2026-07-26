@@ -242,13 +242,22 @@ async function startAudioDetection() {
         sum += dataArray[i];
       }
       let average = sum / bufferLength;
-      if (average > 35) { // Threshold for sound
+      if (average > 25) { // Lowered threshold for better sensitivity
         if (typeof monitorSessionId !== 'undefined' && monitorSessionId) {
           fetch('/monitor/browser-event', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ session_id: monitorSessionId, event_type: 'talking_to_others', detail: 'Microphone picked up sound/talking' })
+            body: JSON.stringify({ session_id: monitorSessionId, event_type: 'talking_to_others', detail: 'Microphone picked up sound' })
           }).catch(()=>{});
+          
+          // Trigger local UI alert so the student sees it
+          if (typeof handleViolation === 'function') {
+            handleViolation({
+               violation_type: 'talking_to_others',
+               alert_message: 'Microphone picked up sound. Please remain silent.',
+               confidence: 0.95
+            });
+          }
         }
       }
     }, 2000);
@@ -268,6 +277,14 @@ async function startAudioDetection() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ session_id: monitorSessionId, event_type: 'talking_to_others', detail: `Speech detected: "${transcript}"` })
           }).catch(()=>{});
+          
+          if (typeof handleViolation === 'function') {
+            handleViolation({
+               violation_type: 'talking_to_others',
+               alert_message: `Speech detected: "${transcript}"`,
+               confidence: 0.99
+            });
+          }
         }
       };
       
