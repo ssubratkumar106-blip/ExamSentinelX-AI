@@ -163,7 +163,11 @@
       const sidebarToggle = document.getElementById('sidebar-toggle');
       if (sidebarToggle) {
         sidebarToggle.addEventListener('click', () => {
-          document.body.classList.toggle('sidebar-collapsed');
+          if (window.innerWidth <= 900) {
+            document.body.classList.toggle('mobile-sidebar-open');
+          } else {
+            document.body.classList.toggle('sidebar-collapsed');
+          }
         });
       }
     });

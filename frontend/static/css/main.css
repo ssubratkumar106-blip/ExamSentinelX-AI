@@ -632,9 +632,31 @@ textarea.form-control { resize: vertical; min-height: 96px; }
 /* ─── Responsive sidebar collapse ───────────────────────────── */
 @media (max-width: 900px) {
   .admin-wrap, .admin-layout { grid-template-columns: 1fr; }
-  .admin-sidebar { display: none; }
+  .admin-sidebar, .app-sidebar {
+    display: none;
+    position: fixed;
+    top: var(--nav-h);
+    left: 0;
+    width: 260px;
+    height: calc(100vh - var(--nav-h));
+    z-index: 1000;
+    background: var(--bg-surface);
+    box-shadow: var(--shadow-lg);
+  }
   .app-layout { grid-template-columns: 1fr; }
-  .app-sidebar { display: none; }
+  
+  body.mobile-sidebar-open .admin-sidebar,
+  body.mobile-sidebar-open .app-sidebar {
+    display: flex;
+  }
+
+  /* Fix navbar for mobile */
+  .navbar { padding: 0 10px; }
+  .navbar-brand span:first-child { font-size: 0.85rem; }
+  .brand-tagline { display: none; }
+  .nav-user-info { display: none; }
+  .nav-user { margin-left: 0; padding-left: 0; border-left: none; gap: 8px !important; margin-right: 0 !important; }
+  .navbar > div:first-child { gap: 10px !important; }
 }
 
 /* ─── Stat card hover lift ────────────────────────────────────── */

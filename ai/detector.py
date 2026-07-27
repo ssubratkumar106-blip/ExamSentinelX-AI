@@ -46,6 +46,16 @@ from ai.lip_detector import TalkingDetector
 import logging
 logger = logging.getLogger(__name__)
 
+# ── Global AI Model Cache (Prevents Memory Leaks) ────────────────────────────
+# These heavy models take up hundreds of MBs. Loading them per session causes OOM.
+_GLOBAL_MODELS = {
+    'face_detector': None,
+    'head_pose': None,
+    'object_detector': None,
+    'cnn_classifier': None,
+    'initialized': False
+}
+
 # ── Auto-detect best available YOLO model ─────────────────────────────────────
 BASE_DIR   = Path(__file__).parent.parent
 MODELS_DIR = BASE_DIR / "ai" / "models"
@@ -130,29 +140,37 @@ class ExamDetector:
         # ── Initialize AI Modules ──────────────────────────────────────────────
         logger.info(f"Initializing AI detectors for session {session_id}")
 
-        # Layer 1: MediaPipe face + head pose
-        self.face_detector = FaceDetector(min_detection_confidence=0.3)  # Lower = catches more faces
-        self.head_pose = HeadPoseEstimator(
-            yaw_limit=yaw_limit,
-            pitch_limit=pitch_limit
-        )
+        # Layer 1-3: Use Global Cache to avoid Memory Leaks
+        global _GLOBAL_MODELS
+        if not _GLOBAL_MODELS['initialized']:
+            logger.info("First run: Loading heavy AI models into global memory")
+            _GLOBAL_MODELS['face_detector'] = FaceDetector(min_detection_confidence=0.3)
+            # Use default limits, we'll override if needed or just use the ones passed here
+            _GLOBAL_MODELS['head_pose'] = HeadPoseEstimator(yaw_limit=yaw_limit, pitch_limit=pitch_limit)
+            _GLOBAL_MODELS['object_detector'] = ObjectDetector(
+                model_path=_get_best_yolo_model(),
+                confidence_threshold=confidence_threshold
+            )
+            if use_cnn:
+                try:
+                    _GLOBAL_MODELS['cnn_classifier'] = get_cnn_classifier()
+                    if _GLOBAL_MODELS['cnn_classifier']:
+                        logger.info("CNN ensemble classifier loaded globally")
+                except Exception as e:
+                    logger.warning(f"CNN classifier unavailable: {e}")
+            _GLOBAL_MODELS['initialized'] = True
 
-        # Layer 2: YOLOv8 object detection (auto-selects best model)
-        yolo_model = _get_best_yolo_model()
-        self.object_detector = ObjectDetector(
-            model_path=yolo_model,
-            confidence_threshold=confidence_threshold
-        )
-
-        # Layer 3: CNN ensemble classifier
-        self.cnn_classifier = None
-        if use_cnn:
-            try:
-                self.cnn_classifier = get_cnn_classifier()
-                if self.cnn_classifier:
-                    logger.info("CNN ensemble classifier loaded")
-            except Exception as e:
-                logger.warning(f"CNN classifier unavailable: {e}")
+        self.face_detector = _GLOBAL_MODELS['face_detector']
+        self.head_pose = _GLOBAL_MODELS['head_pose']
+        # Update head pose limits in case they changed
+        self.head_pose.yaw_limit = yaw_limit
+        self.head_pose.pitch_limit = pitch_limit
+        
+        self.object_detector = _GLOBAL_MODELS['object_detector']
+        # Update YOLO confidence threshold
+        self.object_detector.confidence_threshold = confidence_threshold
+        
+        self.cnn_classifier = _GLOBAL_MODELS['cnn_classifier']
 
         # Layer 4: Lip/Talking detector
         # mar_threshold=0.22: sensitive enough to catch real talking
@@ -543,11 +561,11 @@ class ExamDetector:
             cv2.rectangle(frame, (0, 0), (w - 1, h - 1), RED, 4)
 
     def cleanup(self):
-        """Release all AI model resources."""
+        """Release session resources (Do NOT close global models)."""
         try:
-            self.face_detector.close()
-            self.head_pose.close()
-            logger.info(f"Detector cleanup complete for session {self.session_id}")
+            # We don't call self.face_detector.close() or self.head_pose.close() 
+            # because they are globally shared across all active sessions now.
+            logger.info(f"Detector session cleanup complete for session {self.session_id}")
         except Exception as e:
             logger.warning(f"Cleanup error: {e}")
 
